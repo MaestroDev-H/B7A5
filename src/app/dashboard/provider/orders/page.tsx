@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { apiClient } from "@/lib/api-client";
 import { RentalOrder, RentalStatus } from "@/types";
-import { ArrowLeft, ShoppingBag, CheckCircle, Truck, RotateCcw, XCircle } from "lucide-react";
+import { ArrowLeft, ShoppingBag, CheckCircle, Truck, RotateCcw, XCircle, Clock } from "lucide-react";
 
 export default function ProviderOrdersPage() {
   const [orders, setOrders] = useState<RentalOrder[]>([]);
@@ -77,7 +77,7 @@ export default function ProviderOrdersPage() {
     try {
       await apiClient.patch(`/provider/orders/${orderId}`, { status: newStatus });
     } catch {
-      // Local state update fallback
+      // Local state fallback
     }
     setOrders(
       orders.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
@@ -88,7 +88,7 @@ export default function ProviderOrdersPage() {
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 space-y-8">
       <Link
         href="/dashboard/provider"
-        className="inline-flex items-center gap-2 text-xs font-semibold text-zinc-500 hover:text-emerald-600 transition-colors"
+        className="inline-flex items-center gap-2 text-xs font-bold text-zinc-500 hover:text-emerald-600 transition-colors"
       >
         <ArrowLeft className="h-4 w-4" /> Back to Provider Dashboard
       </Link>
@@ -96,17 +96,17 @@ export default function ProviderOrdersPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200 pb-6 dark:border-zinc-800">
         <div>
           <h1 className="text-3xl font-extrabold text-zinc-900 dark:text-white">
-            Incoming Rental Orders
+            Incoming Rental Fulfillment Orders
           </h1>
           <p className="text-xs text-zinc-500 mt-1">
-            Fulfill orders, confirm reservations, mark equipment picked up or returned.
+            Review customer reservations, confirm bookings, and mark items picked up or returned.
           </p>
         </div>
       </div>
 
       <div className="space-y-4">
         {orders.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-zinc-300 p-12 text-center text-xs text-zinc-500">
+          <div className="rounded-2xl border border-dashed border-zinc-300 p-12 text-center text-xs font-bold text-zinc-500">
             No incoming rental orders at the moment.
           </div>
         ) : (
@@ -117,14 +117,14 @@ export default function ProviderOrdersPage() {
             >
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-100 pb-3 dark:border-zinc-800 text-xs">
                 <div>
-                  <span className="font-bold text-zinc-900 dark:text-white text-sm">
+                  <span className="font-extrabold text-zinc-900 dark:text-white text-sm">
                     Order #{order.id}
                   </span>
-                  <span className="ml-3 text-zinc-400">
+                  <span className="ml-3 text-zinc-400 font-medium">
                     Customer: <strong className="text-zinc-700 dark:text-zinc-300">{order.customer?.name} ({order.customer?.email})</strong>
                   </span>
                 </div>
-                <span className="rounded-full bg-emerald-100 px-3 py-1 font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                <span className="rounded-full bg-emerald-100 px-3 py-1 font-extrabold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
                   Status: {order.status}
                 </span>
               </div>
@@ -132,7 +132,7 @@ export default function ProviderOrdersPage() {
               {/* Items list */}
               <div className="space-y-2 text-xs">
                 {order.items.map((item) => (
-                  <div key={item.id} className="flex justify-between items-center bg-zinc-50 p-3 rounded-xl dark:bg-zinc-950">
+                  <div key={item.id} className="flex justify-between items-center bg-zinc-50 p-3.5 rounded-xl dark:bg-zinc-950">
                     <span className="font-bold text-zinc-900 dark:text-white">
                       {item.gearItem?.name} ({item.quantity} unit)
                     </span>
@@ -144,11 +144,11 @@ export default function ProviderOrdersPage() {
               </div>
 
               {/* Action buttons */}
-              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+              <div className="flex flex-wrap items-center gap-2.5 pt-2 border-t border-zinc-100 dark:border-zinc-800">
                 {order.status === "PLACED" && (
                   <button
                     onClick={() => updateOrderStatus(order.id, "CONFIRMED")}
-                    className="flex items-center gap-1 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-bold text-white shadow hover:bg-blue-500"
+                    className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow hover:bg-blue-500 transition-all"
                   >
                     <CheckCircle className="h-4 w-4" /> Confirm Reservation
                   </button>
@@ -156,7 +156,7 @@ export default function ProviderOrdersPage() {
                 {(order.status === "CONFIRMED" || order.status === "PAID") && (
                   <button
                     onClick={() => updateOrderStatus(order.id, "PICKED_UP")}
-                    className="flex items-center gap-1 rounded-xl bg-purple-600 px-3.5 py-2 text-xs font-bold text-white shadow hover:bg-purple-500"
+                    className="flex items-center gap-1.5 rounded-xl bg-purple-600 px-4 py-2 text-xs font-bold text-white shadow hover:bg-purple-500 transition-all"
                   >
                     <Truck className="h-4 w-4" /> Mark Picked Up
                   </button>
@@ -164,7 +164,7 @@ export default function ProviderOrdersPage() {
                 {order.status === "PICKED_UP" && (
                   <button
                     onClick={() => updateOrderStatus(order.id, "RETURNED")}
-                    className="flex items-center gap-1 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white shadow hover:bg-emerald-500"
+                    className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow hover:bg-emerald-500 transition-all"
                   >
                     <RotateCcw className="h-4 w-4" /> Mark Returned & Complete
                   </button>
@@ -172,7 +172,7 @@ export default function ProviderOrdersPage() {
                 {order.status !== "CANCELLED" && order.status !== "RETURNED" && (
                   <button
                     onClick={() => updateOrderStatus(order.id, "CANCELLED")}
-                    className="flex items-center gap-1 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-bold text-rose-600 hover:bg-rose-100"
+                    className="flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-xs font-bold text-rose-600 hover:bg-rose-100 transition-all"
                   >
                     <XCircle className="h-4 w-4" /> Cancel Order
                   </button>
