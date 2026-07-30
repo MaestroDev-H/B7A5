@@ -14,6 +14,8 @@ import {
   Search,
   Flame,
   CheckCircle2,
+  PackageCheck,
+  TrendingUp,
 } from "lucide-react";
 
 const DEMO_CATEGORIES: Category[] = [
@@ -173,7 +175,7 @@ export default function HomePage() {
       setGearList(fetchedGear.length > 0 ? fetchedGear : DEMO_GEAR);
       setCategories(fetchedCats.length > 0 ? fetchedCats : DEMO_CATEGORIES);
     } catch (err) {
-      console.warn("Using demo data due to API offline status:", err);
+      console.warn("Using demo data due to API status:", err);
       setGearList(DEMO_GEAR);
       setCategories(DEMO_CATEGORIES);
     } finally {
@@ -218,23 +220,23 @@ export default function HomePage() {
     <div className="space-y-16 pb-20">
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-b from-emerald-950 via-zinc-900 to-zinc-950 text-white py-20 lg:py-28">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-600/20 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-600/25 via-transparent to-transparent" />
         
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center space-y-8">
-          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 text-xs font-semibold text-emerald-400 backdrop-blur-md">
-            <Sparkles className="h-4 w-4" />
-            Instant Sports & Outdoor Equipment Rental Platform
+          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 text-xs font-bold text-emerald-400 backdrop-blur-md">
+            <Sparkles className="h-4 w-4 text-emerald-400" />
+            Instant Sports & Outdoor Equipment Rental Service
           </div>
 
           <h1 className="text-4xl font-extrabold tracking-tight sm:text-6xl max-w-4xl mx-auto leading-tight">
             Rent Premium Gear for Your Next{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300">
-              Adventure
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-emerald-200">
+              Outdoor Adventure
             </span>
           </h1>
 
-          <p className="text-base sm:text-lg text-zinc-300 max-w-2xl mx-auto font-light leading-relaxed">
-            Skip buying expensive gear you only use twice a year. Rent verified kayaks, tents, mountain bikes & fitness equipment from local rental shops with flexible dates and full insurance.
+          <p className="text-base sm:text-lg text-zinc-300 max-w-2xl mx-auto font-normal leading-relaxed">
+            Skip buying expensive equipment. Rent verified tents, kayaks, mountain bikes & fitness gear from local rental shops with flexible dates and full insurance coverage.
           </p>
 
           {/* Quick Hero Search Bar */}
@@ -246,19 +248,19 @@ export default function HomePage() {
                 placeholder="Search gear (e.g. Tent, Kayak, Bike)..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-xl bg-white/10 pl-10 pr-4 py-3 text-sm text-white placeholder-zinc-400 focus:bg-white/20 focus:outline-none"
+                className="w-full rounded-xl bg-white/10 pl-10 pr-4 py-3 text-xs sm:text-sm text-white placeholder-zinc-400 focus:bg-white/20 focus:outline-none font-medium"
               />
             </div>
             <a
               href="#gear-catalog"
-              className="flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-500/30 hover:bg-emerald-400 transition-colors"
+              className="flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-6 py-3 text-xs sm:text-sm font-extrabold text-white shadow-lg shadow-emerald-500/30 hover:bg-emerald-400 transition-all"
             >
               Explore Catalog
             </a>
           </div>
 
-          {/* Quick Features List */}
-          <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-zinc-400 pt-4">
+          {/* Features Checklist */}
+          <div className="flex flex-wrap items-center justify-center gap-6 text-xs font-bold text-zinc-300 pt-2">
             <span className="flex items-center gap-1.5">
               <CheckCircle2 className="h-4 w-4 text-emerald-400" /> Insured Equipment
             </span>
@@ -276,7 +278,7 @@ export default function HomePage() {
       <section id="gear-catalog" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-8">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-zinc-200 pb-6 dark:border-zinc-800">
           <div>
-            <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider">
+            <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 text-xs font-extrabold uppercase tracking-wider">
               <Flame className="h-4 w-4" /> Live Gear Inventory
             </div>
             <h2 className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-white mt-1">
@@ -313,20 +315,20 @@ export default function HomePage() {
       </section>
 
       {/* How it Works Section */}
-      <section id="how-it-works" className="bg-zinc-100 dark:bg-zinc-900/50 py-16">
+      <section id="how-it-works" className="bg-zinc-100/80 dark:bg-zinc-900/50 py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-12">
           <div className="text-center space-y-2 max-w-xl mx-auto">
-            <h2 className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-white">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-white">
               How GearUp Works
             </h2>
             <p className="text-xs sm:text-sm text-zinc-500">
-              Rent sports equipment in 3 simple steps with full peace of mind.
+              Rent sports & outdoor equipment in 3 simple steps with complete confidence.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="flex flex-col items-center text-center p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400 font-extrabold text-lg mb-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400 font-extrabold text-lg mb-4">
                 1
               </div>
               <h3 className="text-base font-bold text-zinc-900 dark:text-white">Choose Gear & Dates</h3>
@@ -336,7 +338,7 @@ export default function HomePage() {
             </div>
 
             <div className="flex flex-col items-center text-center p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400 font-extrabold text-lg mb-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400 font-extrabold text-lg mb-4">
                 2
               </div>
               <h3 className="text-base font-bold text-zinc-900 dark:text-white">Instant Checkout</h3>
@@ -346,7 +348,7 @@ export default function HomePage() {
             </div>
 
             <div className="flex flex-col items-center text-center p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400 font-extrabold text-lg mb-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400 font-extrabold text-lg mb-4">
                 3
               </div>
               <h3 className="text-base font-bold text-zinc-900 dark:text-white">Pick Up & Enjoy</h3>
