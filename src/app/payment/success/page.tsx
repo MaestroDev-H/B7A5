@@ -3,7 +3,7 @@
 import React, { Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { CheckCircle2, LayoutDashboard } from "lucide-react";
+import { CheckCircle2, LayoutDashboard, ArrowRight, ShieldCheck, Download } from "lucide-react";
 
 function SuccessContent() {
   const searchParams = useSearchParams();
@@ -17,7 +17,7 @@ function SuccessContent() {
       </div>
 
       <div className="space-y-2">
-        <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+        <span className="rounded-full bg-emerald-100 px-3.5 py-1 text-xs font-extrabold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
           Payment Confirmed
         </span>
         <h1 className="text-3xl font-extrabold text-zinc-900 dark:text-white">
@@ -28,10 +28,11 @@ function SuccessContent() {
         </p>
       </div>
 
-      <div className="rounded-2xl bg-zinc-50 p-5 text-left dark:bg-zinc-950 space-y-3 text-xs">
+      {/* Interactive Receipt Card */}
+      <div className="rounded-2xl bg-zinc-50 p-5 text-left dark:bg-zinc-950 space-y-3 text-xs border border-zinc-100 dark:border-zinc-800">
         <div className="flex justify-between text-zinc-500">
-          <span>Transaction ID:</span>
-          <span className="font-mono text-zinc-900 dark:text-white font-semibold">
+          <span>Transaction Ref:</span>
+          <span className="font-mono text-zinc-900 dark:text-white font-bold">
             TXN-{Date.now().toString().slice(-8)}
           </span>
         </div>
@@ -41,22 +42,22 @@ function SuccessContent() {
         </div>
         <div className="flex justify-between text-zinc-500">
           <span>Payment Status:</span>
-          <span className="font-bold text-emerald-600">COMPLETED</span>
+          <span className="font-extrabold text-emerald-600">COMPLETED</span>
         </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 pt-4">
         <Link
           href="/dashboard/customer"
-          className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-600/30 hover:bg-emerald-500 transition-all"
+          className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-xs font-extrabold text-white shadow-lg shadow-emerald-600/30 hover:bg-emerald-500 transition-all"
         >
           <LayoutDashboard className="h-4 w-4" /> Go to Dashboard
         </Link>
         <Link
           href="/"
-          className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-zinc-200 py-3 text-sm font-semibold text-zinc-700 hover:bg-zinc-100 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800 transition-all"
+          className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-zinc-200 py-3 text-xs font-bold text-zinc-700 hover:bg-zinc-100 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800 transition-all"
         >
-          Browse More Gear
+          Browse Catalog
         </Link>
       </div>
     </div>
@@ -66,7 +67,7 @@ function SuccessContent() {
 export default function PaymentSuccessPage() {
   return (
     <div className="flex min-h-[75vh] items-center justify-center px-4 py-16">
-      <Suspense fallback={<div className="text-xs text-zinc-400">Loading receipt...</div>}>
+      <Suspense fallback={<div className="text-xs text-zinc-400 font-bold">Loading order receipt...</div>}>
         <SuccessContent />
       </Suspense>
     </div>
