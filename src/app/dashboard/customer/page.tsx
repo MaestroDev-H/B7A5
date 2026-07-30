@@ -53,7 +53,6 @@ export default function CustomerDashboardPage() {
         setPayments(pData);
       } catch (err) {
         console.warn("Using demo data for customer dashboard:", err);
-        // Demo Fallback Data
         setRentals([
           {
             id: "ORD-982301",
@@ -175,7 +174,7 @@ export default function CustomerDashboardPage() {
         setSelectedRentalItem(null);
         setReviewSuccess("");
       }, 2000);
-    } catch (err: any) {
+    } catch {
       setReviewSuccess("Submitted! (Demo feedback mode)");
       setTimeout(() => {
         setSelectedRentalItem(null);
@@ -209,18 +208,18 @@ export default function CustomerDashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200 pb-6 dark:border-zinc-800">
         <div>
           <h1 className="text-3xl font-extrabold text-zinc-900 dark:text-white">
-            Customer Dashboard
+            Customer Rental Dashboard
           </h1>
           <p className="text-xs text-zinc-500 mt-1">
-            Welcome back, <strong className="text-zinc-800 dark:text-zinc-200">{user?.name}</strong>! Track your gear rentals & payments.
+            Welcome back, <strong className="text-zinc-800 dark:text-zinc-200">{user?.name || "Customer"}</strong>! Track your active gear rentals & payment history.
           </p>
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex gap-2 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-900">
+        <div className="flex gap-2 rounded-2xl bg-zinc-100 p-1 dark:bg-zinc-900">
           <button
             onClick={() => setActiveTab("rentals")}
-            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold transition-colors ${
+            className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all ${
               activeTab === "rentals"
                 ? "bg-white text-emerald-600 shadow-sm dark:bg-zinc-800 dark:text-emerald-400"
                 : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
@@ -230,7 +229,7 @@ export default function CustomerDashboardPage() {
           </button>
           <button
             onClick={() => setActiveTab("payments")}
-            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold transition-colors ${
+            className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all ${
               activeTab === "payments"
                 ? "bg-white text-emerald-600 shadow-sm dark:bg-zinc-800 dark:text-emerald-400"
                 : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
@@ -258,14 +257,14 @@ export default function CustomerDashboardPage() {
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-100 pb-4 dark:border-zinc-800 text-xs">
                     <div className="flex items-center gap-3">
-                      <span className="font-bold text-zinc-900 dark:text-white text-sm">
+                      <span className="font-extrabold text-zinc-900 dark:text-white text-sm">
                         Order #{order.id}
                       </span>
                       <span className={`rounded-full px-3 py-1 font-extrabold ${getStatusBadge(order.status)}`}>
                         {order.status}
                       </span>
                     </div>
-                    <div className="text-zinc-400">
+                    <div className="text-zinc-400 font-medium">
                       Rental Dates: <strong className="text-zinc-700 dark:text-zinc-300">{order.startDate} → {order.endDate}</strong>
                     </div>
                   </div>
@@ -287,15 +286,14 @@ export default function CustomerDashboardPage() {
                         </div>
 
                         <div className="flex items-center gap-4">
-                          <span className="text-sm font-bold text-zinc-900 dark:text-white">
+                          <span className="text-sm font-extrabold text-zinc-900 dark:text-white">
                             ${order.totalAmount}
                           </span>
 
-                          {/* Review Button for Returned items */}
                           {order.status === "RETURNED" && (
                             <button
                               onClick={() => setSelectedRentalItem(item)}
-                              className="flex items-center gap-1 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-bold text-white shadow hover:bg-amber-400 transition-colors"
+                              className="flex items-center gap-1.5 rounded-xl bg-amber-500 px-3.5 py-1.5 text-xs font-bold text-white shadow hover:bg-amber-400 transition-all"
                             >
                               <Star className="h-3.5 w-3.5 fill-white" /> Leave Review
                             </button>
@@ -315,7 +313,7 @@ export default function CustomerDashboardPage() {
       {activeTab === "payments" && (
         <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <table className="w-full text-left text-xs">
-            <thead className="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 text-zinc-500 uppercase font-bold">
+            <thead className="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 text-zinc-500 uppercase font-extrabold">
               <tr>
                 <th className="p-4">Transaction ID</th>
                 <th className="p-4">Order Ref</th>
@@ -328,9 +326,9 @@ export default function CustomerDashboardPage() {
               {payments.map((p) => (
                 <tr key={p.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/50">
                   <td className="p-4 font-mono font-bold text-zinc-900 dark:text-white">{p.transactionId}</td>
-                  <td className="p-4">{p.rentalOrderId}</td>
-                  <td className="p-4 font-semibold">{p.method}</td>
-                  <td className="p-4 font-extrabold text-emerald-600 dark:text-emerald-400">${p.amount}</td>
+                  <td className="p-4 font-semibold">{p.rentalOrderId}</td>
+                  <td className="p-4 font-bold text-emerald-600">{p.method}</td>
+                  <td className="p-4 font-extrabold text-zinc-900 dark:text-white text-sm">${p.amount}</td>
                   <td className="p-4">
                     <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
                       {p.status}
@@ -389,7 +387,7 @@ export default function CustomerDashboardPage() {
                     placeholder="Tell us about the equipment quality, durability, and handoff experience..."
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
-                    className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white"
+                    className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
                   />
                 </div>
 
@@ -398,7 +396,7 @@ export default function CustomerDashboardPage() {
                   disabled={isSubmittingReview}
                   className="w-full rounded-xl bg-emerald-600 py-3 text-xs font-bold text-white shadow hover:bg-emerald-500 transition-all"
                 >
-                  {isSubmittingReview ? "Submitting..." : "Submit Review"}
+                  {isSubmittingReview ? "Submitting..." : "Submit Gear Review"}
                 </button>
               </form>
             )}
