@@ -61,7 +61,6 @@ export default function GearDetailsPage() {
         }
       } catch (err) {
         console.warn("Using fallback data for gear detail:", err);
-        // Demo fallback
         const demo: GearItem = {
           id: gearId,
           name: "Ultralight 3-Person Waterproof Tent",
@@ -121,7 +120,6 @@ export default function GearDetailsPage() {
       return;
     }
 
-    // Store draft checkout state in sessionStorage
     const bookingDetails = {
       gearItem: gear,
       startDate,
@@ -155,8 +153,8 @@ export default function GearDetailsPage() {
       <div className="mx-auto max-w-7xl px-4 py-20 text-center space-y-4">
         <AlertCircle className="h-12 w-12 text-rose-500 mx-auto" />
         <h2 className="text-2xl font-bold">Gear Item Not Found</h2>
-        <Link href="/" className="inline-block text-sm text-emerald-600 font-semibold underline">
-          Return to Catalog
+        <Link href="/" className="inline-block text-xs text-emerald-600 font-bold underline">
+          Return to Equipment Catalog
         </Link>
       </div>
     );
@@ -167,7 +165,7 @@ export default function GearDetailsPage() {
       {/* Back Button */}
       <Link
         href="/"
-        className="inline-flex items-center gap-2 text-xs font-semibold text-zinc-500 hover:text-emerald-600 transition-colors"
+        className="inline-flex items-center gap-2 text-xs font-bold text-zinc-500 hover:text-emerald-600 transition-colors"
       >
         <ArrowLeft className="h-4 w-4" /> Back to Equipment Catalog
       </Link>
@@ -176,7 +174,7 @@ export default function GearDetailsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
         {/* Left Column: Gallery & Details (7 cols) */}
         <div className="lg:col-span-7 space-y-8">
-          {/* Gallery */}
+          {/* Image Gallery */}
           <div className="space-y-3">
             <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm">
               <Image
@@ -186,12 +184,12 @@ export default function GearDetailsPage() {
                 priority
                 className="object-cover"
               />
-              <span className="absolute top-4 left-4 rounded-full bg-emerald-600 px-3 py-1 text-xs font-bold text-white shadow-md">
+              <span className="absolute top-4 left-4 rounded-full bg-emerald-600 px-3 py-1 text-xs font-extrabold text-white shadow-md">
                 {gear.category?.name || "Equipment"}
               </span>
             </div>
 
-            {/* Thumbnail selector */}
+            {/* Thumbnail Selector */}
             {gear.images && gear.images.length > 1 && (
               <div className="flex gap-3">
                 {gear.images.map((img, idx) => (
@@ -200,7 +198,7 @@ export default function GearDetailsPage() {
                     onClick={() => setSelectedImage(img)}
                     className={`relative h-20 w-20 overflow-hidden rounded-xl border-2 transition-all ${
                       selectedImage === img
-                        ? "border-emerald-600 scale-105"
+                        ? "border-emerald-600 scale-105 shadow-md"
                         : "border-transparent opacity-70 hover:opacity-100"
                     }`}
                   >
@@ -211,13 +209,13 @@ export default function GearDetailsPage() {
             )}
           </div>
 
-          {/* Title & Ratings */}
+          {/* Title & Brand */}
           <div className="space-y-2">
             <div className="flex items-center gap-3">
-              <span className="rounded-md bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
-                {gear.brand}
+              <span className="rounded-lg bg-zinc-100 px-3 py-1 text-xs font-extrabold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                Brand: {gear.brand}
               </span>
-              <span className="flex items-center gap-1 text-xs font-bold text-amber-500">
+              <span className="flex items-center gap-1 text-xs font-extrabold text-amber-500">
                 <Star className="h-4 w-4 fill-amber-400" />
                 {gear.avgRating ? gear.avgRating.toFixed(1) : "4.9"} (12 reviews)
               </span>
@@ -228,12 +226,12 @@ export default function GearDetailsPage() {
             </h1>
           </div>
 
-          {/* Description */}
-          <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900 space-y-4">
-            <h3 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider">
-              Product Overview
+          {/* Product Specifications & Overview */}
+          <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900 space-y-4 shadow-sm">
+            <h3 className="text-xs font-extrabold text-zinc-900 dark:text-white uppercase tracking-wider">
+              Product Overview & Specifications
             </h3>
-            <p className="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed">
+            <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed">
               {gear.description}
             </p>
 
@@ -241,11 +239,11 @@ export default function GearDetailsPage() {
               <div>
                 <span className="text-zinc-400 font-medium">Availability Status:</span>
                 <p className="font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
-                  {gear.isAvailable ? "In Stock & Ready" : "Currently Unavailable"}
+                  {gear.isAvailable ? "In Stock & Ready" : "Currently Rented Out"}
                 </p>
               </div>
               <div>
-                <span className="text-zinc-400 font-medium">Total Stock Quantity:</span>
+                <span className="text-zinc-400 font-medium">Available Units:</span>
                 <p className="font-bold text-zinc-900 dark:text-white mt-0.5">
                   {gear.stock} Units
                 </p>
@@ -253,26 +251,26 @@ export default function GearDetailsPage() {
             </div>
           </div>
 
-          {/* Provider Information Card */}
-          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-6 dark:border-zinc-800 dark:bg-zinc-950 flex items-center justify-between">
+          {/* Verified Provider Info Card */}
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-6 dark:border-zinc-800 dark:bg-zinc-950 flex items-center justify-between shadow-sm">
             <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-600 text-white font-bold text-lg">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-600 text-white font-extrabold text-lg">
                 <UserIcon className="h-6 w-6" />
               </div>
               <div>
                 <h4 className="text-sm font-bold text-zinc-900 dark:text-white">
-                  {gear.provider?.name || "GearUp Certified Vendor"}
+                  {gear.provider?.name || "Summit Outfitters Shop"}
                 </h4>
-                <p className="text-xs text-zinc-500">Verified Rental Partner</p>
+                <p className="text-xs text-zinc-500">Verified Equipment Provider</p>
               </div>
             </div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
               <ShieldCheck className="h-4 w-4" /> Verified
             </span>
           </div>
         </div>
 
-        {/* Right Column: Interactive Booking Card (5 cols) */}
+        {/* Right Column: Booking Card (5 cols) */}
         <div className="lg:col-span-5">
           <div className="sticky top-24 rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900 space-y-6">
             <div className="flex items-baseline justify-between border-b border-zinc-100 pb-4 dark:border-zinc-800">
@@ -282,29 +280,29 @@ export default function GearDetailsPage() {
                 </span>
                 <span className="text-xs text-zinc-400"> / day</span>
               </div>
-              <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
                 ★ 100% Insured Rental
               </span>
             </div>
 
-            {/* Booking Date Range Selection */}
+            {/* Booking Date Range */}
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">
-                    Start Date
+                  <label className="text-xs font-bold text-zinc-600 dark:text-zinc-400">
+                    Pickup Date
                   </label>
                   <input
                     type="date"
                     value={startDate}
                     min={new Date().toISOString().split("T")[0]}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white"
+                    className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">
+                  <label className="text-xs font-bold text-zinc-600 dark:text-zinc-400">
                     Return Date
                   </label>
                   <input
@@ -312,20 +310,20 @@ export default function GearDetailsPage() {
                     value={endDate}
                     min={startDate || new Date().toISOString().split("T")[0]}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white"
+                    className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
                   />
                 </div>
               </div>
 
-              {/* Quantity */}
+              {/* Quantity Selector */}
               <div>
-                <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">
+                <label className="text-xs font-bold text-zinc-600 dark:text-zinc-400">
                   Quantity Needed
                 </label>
                 <select
                   value={quantity}
                   onChange={(e) => setQuantity(Number(e.target.value))}
-                  className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white"
+                  className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
                 >
                   {Array.from({ length: Math.min(gear.stock, 5) }).map((_, i) => (
                     <option key={i + 1} value={i + 1}>
@@ -336,22 +334,22 @@ export default function GearDetailsPage() {
               </div>
             </div>
 
-            {/* Price Breakdown Calculation */}
+            {/* Price Calculation Summary */}
             <div className="rounded-xl bg-zinc-50 p-4 dark:bg-zinc-950 space-y-2 text-xs">
               <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
                 <span>
                   ${gear.pricePerDay} × {totalDays} day{totalDays > 1 ? "s" : ""} × {quantity}
                 </span>
-                <span className="font-semibold text-zinc-900 dark:text-white">
+                <span className="font-bold text-zinc-900 dark:text-white">
                   ${totalPrice}
                 </span>
               </div>
               <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
-                <span>Service & Maintenance Fee</span>
-                <span className="font-semibold text-emerald-600">FREE</span>
+                <span>Damage Protection Insurance</span>
+                <span className="font-bold text-emerald-600">INCLUDED</span>
               </div>
-              <div className="border-t border-zinc-200 pt-2 flex justify-between font-bold text-sm text-zinc-900 dark:text-white dark:border-zinc-800">
-                <span>Total Estimated</span>
+              <div className="border-t border-zinc-200 pt-2 flex justify-between font-extrabold text-sm text-zinc-900 dark:text-white dark:border-zinc-800">
+                <span>Total Estimated Rate</span>
                 <span className="text-emerald-600 dark:text-emerald-400">${totalPrice}</span>
               </div>
             </div>
@@ -360,10 +358,10 @@ export default function GearDetailsPage() {
             <button
               onClick={handleBookingRedirect}
               disabled={!gear.isAvailable || gear.stock === 0}
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-emerald-600/30 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3.5 text-xs sm:text-sm font-extrabold text-white shadow-lg shadow-emerald-600/30 hover:bg-emerald-500 disabled:opacity-50 transition-all"
             >
               <ShoppingBag className="h-4 w-4" />
-              {user ? "Proceed to Rental Checkout" : "Sign In to Rent Equipment"}
+              {user ? "Proceed to Checkout" : "Sign In to Rent Equipment"}
             </button>
           </div>
         </div>
