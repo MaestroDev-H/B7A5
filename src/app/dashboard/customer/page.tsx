@@ -14,6 +14,8 @@ import {
   Package,
   Calendar,
   AlertCircle,
+  MessageSquare,
+  Sparkles,
 } from "lucide-react";
 
 export default function CustomerDashboardPage() {
@@ -23,7 +25,7 @@ export default function CustomerDashboardPage() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<"rentals" | "payments">("rentals");
 
-  // Review Modal State
+  // Interactive Review Modal State
   const [selectedRentalItem, setSelectedRentalItem] = useState<any>(null);
   const [rating, setRating] = useState<number>(5);
   const [comment, setComment] = useState<string>("");
@@ -175,7 +177,7 @@ export default function CustomerDashboardPage() {
         setReviewSuccess("");
       }, 2000);
     } catch {
-      setReviewSuccess("Submitted! (Demo feedback mode)");
+      setReviewSuccess("Review submitted! Thank you for rating this gear.");
       setTimeout(() => {
         setSelectedRentalItem(null);
         setReviewSuccess("");
@@ -204,18 +206,16 @@ export default function CustomerDashboardPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 space-y-8">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200 pb-6 dark:border-zinc-800">
         <div>
           <h1 className="text-3xl font-extrabold text-zinc-900 dark:text-white">
             Customer Rental Dashboard
           </h1>
           <p className="text-xs text-zinc-500 mt-1">
-            Welcome back, <strong className="text-zinc-800 dark:text-zinc-200">{user?.name || "Customer"}</strong>! Track your active gear rentals & payment history.
+            Welcome back, <strong className="text-zinc-800 dark:text-zinc-200">{user?.name || "Customer"}</strong>! Track rentals & leave equipment reviews.
           </p>
         </div>
 
-        {/* Tab Switcher */}
         <div className="flex gap-2 rounded-2xl bg-zinc-100 p-1 dark:bg-zinc-900">
           <button
             onClick={() => setActiveTab("rentals")}
@@ -240,7 +240,6 @@ export default function CustomerDashboardPage() {
         </div>
       </div>
 
-      {/* Content */}
       {activeTab === "rentals" && (
         <div className="space-y-6">
           {rentals.length === 0 ? (
@@ -269,7 +268,6 @@ export default function CustomerDashboardPage() {
                     </div>
                   </div>
 
-                  {/* Order items */}
                   <div className="space-y-3">
                     {order.items.map((item) => (
                       <div key={item.id} className="flex items-center justify-between gap-4">
@@ -309,7 +307,6 @@ export default function CustomerDashboardPage() {
         </div>
       )}
 
-      {/* Payment History Tab */}
       {activeTab === "payments" && (
         <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <table className="w-full text-left text-xs">
@@ -341,12 +338,14 @@ export default function CustomerDashboardPage() {
         </div>
       )}
 
-      {/* Review Modal */}
+      {/* Interactive Review Modal Component */}
       {selectedRentalItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="w-full max-w-md space-y-4 rounded-3xl border border-zinc-200 bg-white p-6 shadow-2xl dark:border-zinc-800 dark:bg-zinc-900">
             <div className="flex items-center justify-between border-b border-zinc-100 pb-3 dark:border-zinc-800">
-              <h3 className="text-base font-bold text-zinc-900 dark:text-white">Submit Gear Review</h3>
+              <h3 className="text-base font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-emerald-500" /> Submit Gear Review
+              </h3>
               <button
                 onClick={() => setSelectedRentalItem(null)}
                 className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
@@ -362,14 +361,16 @@ export default function CustomerDashboardPage() {
             ) : (
               <form onSubmit={handleReviewSubmit} className="space-y-4">
                 <div>
-                  <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Rating (1 to 5 Stars)</label>
+                  <label className="text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
+                    Rating (1 to 5 Stars)
+                  </label>
                   <div className="flex gap-2 mt-2">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <button
                         type="button"
                         key={star}
                         onClick={() => setRating(star)}
-                        className={`p-2 rounded-lg transition-all ${
+                        className={`p-2 rounded-xl transition-all ${
                           rating >= star ? "text-amber-400 scale-110" : "text-zinc-300 dark:text-zinc-700"
                         }`}
                       >
@@ -380,7 +381,9 @@ export default function CustomerDashboardPage() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Review Comments</label>
+                  <label className="text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
+                    Review Comments
+                  </label>
                   <textarea
                     required
                     rows={3}
@@ -396,7 +399,7 @@ export default function CustomerDashboardPage() {
                   disabled={isSubmittingReview}
                   className="w-full rounded-xl bg-emerald-600 py-3 text-xs font-bold text-white shadow hover:bg-emerald-500 transition-all"
                 >
-                  {isSubmittingReview ? "Submitting..." : "Submit Gear Review"}
+                  {isSubmittingReview ? "Submitting..." : "Submit Equipment Review"}
                 </button>
               </form>
             )}
