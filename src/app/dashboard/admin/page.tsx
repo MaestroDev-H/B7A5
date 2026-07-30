@@ -15,6 +15,7 @@ import {
   UserCheck,
   UserX,
   AlertCircle,
+  TrendingUp,
 } from "lucide-react";
 
 export default function AdminDashboardPage() {
@@ -122,18 +123,18 @@ export default function AdminDashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200 pb-6 dark:border-zinc-800">
         <div>
           <div className="flex items-center gap-2 text-xs font-extrabold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
-            <ShieldCheck className="h-4 w-4" /> Platform Admin Portal
+            <ShieldCheck className="h-4 w-4" /> Platform Moderation Portal
           </div>
           <h1 className="text-3xl font-extrabold text-zinc-900 dark:text-white mt-1">
-            Global Moderation & Control
+            Global Admin Management & Moderation
           </h1>
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex gap-2 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-900">
+        <div className="flex gap-2 rounded-2xl bg-zinc-100 p-1 dark:bg-zinc-900">
           <button
             onClick={() => setActiveTab("users")}
-            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold transition-colors ${
+            className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all ${
               activeTab === "users"
                 ? "bg-white text-emerald-600 shadow-sm dark:bg-zinc-800 dark:text-emerald-400"
                 : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
@@ -143,7 +144,7 @@ export default function AdminDashboardPage() {
           </button>
           <button
             onClick={() => setActiveTab("categories")}
-            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold transition-colors ${
+            className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all ${
               activeTab === "categories"
                 ? "bg-white text-emerald-600 shadow-sm dark:bg-zinc-800 dark:text-emerald-400"
                 : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
@@ -154,26 +155,26 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* Admin Stats Counter Bar */}
+      {/* Admin Analytics Counter Bar */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-6">
         <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <p className="text-xs font-semibold text-zinc-400">Total Registered Users</p>
-          <h3 className="text-2xl font-extrabold text-zinc-900 dark:text-white mt-1">{users.length}</h3>
+          <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Total Platform Users</p>
+          <h3 className="text-2xl font-extrabold text-zinc-900 dark:text-white mt-1">{users.length} Accounts</h3>
         </div>
         <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <p className="text-xs font-semibold text-zinc-400">Providers / Rental Shops</p>
+          <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Rental Vendors / Shops</p>
           <h3 className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-1">
-            {users.filter((u) => u.role === "PROVIDER").length}
+            {users.filter((u) => u.role === "PROVIDER").length} Providers
           </h3>
         </div>
         <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <p className="text-xs font-semibold text-zinc-400">Active Categories</p>
-          <h3 className="text-2xl font-extrabold text-zinc-900 dark:text-white mt-1">{categories.length}</h3>
+          <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Active Gear Categories</p>
+          <h3 className="text-2xl font-extrabold text-zinc-900 dark:text-white mt-1">{categories.length} Categories</h3>
         </div>
         <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <p className="text-xs font-semibold text-zinc-400">Suspended Users</p>
+          <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Suspended Accounts</p>
           <h3 className="text-2xl font-extrabold text-rose-500 mt-1">
-            {users.filter((u) => u.status === "SUSPENDED").length}
+            {users.filter((u) => u.status === "SUSPENDED").length} Suspended
           </h3>
         </div>
       </div>
@@ -181,11 +182,11 @@ export default function AdminDashboardPage() {
       {/* Users Tab */}
       {activeTab === "users" && (
         <div className="space-y-4">
-          <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Platform User Accounts</h2>
+          <h2 className="text-lg font-extrabold text-zinc-900 dark:text-white">Platform User Accounts List</h2>
 
           <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
             <table className="w-full text-left text-xs">
-              <thead className="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 text-zinc-500 uppercase font-bold">
+              <thead className="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 text-zinc-500 uppercase font-extrabold">
                 <tr>
                   <th className="p-4">Name</th>
                   <th className="p-4">Email</th>
@@ -198,10 +199,10 @@ export default function AdminDashboardPage() {
                 {users.map((u) => (
                   <tr key={u.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/50">
                     <td className="p-4 font-bold text-zinc-900 dark:text-white">{u.name}</td>
-                    <td className="p-4">{u.email}</td>
+                    <td className="p-4 font-medium">{u.email}</td>
                     <td className="p-4 font-bold">
                       <span
-                        className={`rounded-md px-2 py-0.5 text-[10px] ${
+                        className={`rounded-md px-2 py-0.5 text-[10px] uppercase font-bold ${
                           u.role === "ADMIN"
                             ? "bg-purple-100 text-purple-800"
                             : u.role === "PROVIDER"
@@ -214,7 +215,7 @@ export default function AdminDashboardPage() {
                     </td>
                     <td className="p-4">
                       <span
-                        className={`rounded-full px-2.5 py-0.5 font-bold ${
+                        className={`rounded-full px-2.5 py-0.5 font-extrabold ${
                           u.status === "ACTIVE"
                             ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
                             : "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
@@ -227,7 +228,7 @@ export default function AdminDashboardPage() {
                       {u.role !== "ADMIN" && (
                         <button
                           onClick={() => toggleUserStatus(u.id, u.status)}
-                          className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 font-bold text-xs transition-colors ${
+                          className={`inline-flex items-center gap-1 rounded-xl px-3.5 py-1.5 font-bold text-xs transition-colors ${
                             u.status === "ACTIVE"
                               ? "bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400"
                               : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400"
@@ -257,12 +258,12 @@ export default function AdminDashboardPage() {
       {activeTab === "categories" && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Gear Categories</h2>
+            <h2 className="text-lg font-extrabold text-zinc-900 dark:text-white">Gear Categories</h2>
             <button
               onClick={() => setIsCatModalOpen(true)}
-              className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow hover:bg-emerald-500 transition-all"
+              className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow hover:bg-emerald-500 transition-all"
             >
-              <Plus className="h-4 w-4" /> Add Category
+              <Plus className="h-4 w-4" /> Add New Category
             </button>
           </div>
 
@@ -300,7 +301,7 @@ export default function AdminDashboardPage() {
                   placeholder="e.g. Climbing & Mountaineering"
                   value={newCatName}
                   onChange={(e) => setNewCatName(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white"
+                  className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
                 />
               </div>
 
