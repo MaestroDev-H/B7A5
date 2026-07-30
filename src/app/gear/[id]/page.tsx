@@ -27,10 +27,9 @@ export default function GearDetailsPage() {
   const gearId = params?.id as string;
 
   const [gear, setGear] = useState<GearItem | null>(null);
-  const [reviews, setReviews] = useState<Review[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Booking date picker states
+  // Rental date selection state
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [quantity, setQuantity] = useState<number>(1);
@@ -101,7 +100,7 @@ export default function GearDetailsPage() {
     fetchDetails();
   }, [gearId]);
 
-  // Calculate rental duration in days
+  // Calculate rental duration in days cleanly
   const calculateDays = () => {
     if (!startDate || !endDate) return 1;
     const start = new Date(startDate);
@@ -162,7 +161,6 @@ export default function GearDetailsPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 space-y-12">
-      {/* Back Button */}
       <Link
         href="/"
         className="inline-flex items-center gap-2 text-xs font-bold text-zinc-500 hover:text-emerald-600 transition-colors"
@@ -170,11 +168,8 @@ export default function GearDetailsPage() {
         <ArrowLeft className="h-4 w-4" /> Back to Equipment Catalog
       </Link>
 
-      {/* Main Grid: Gallery & Info + Booking Card */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-        {/* Left Column: Gallery & Details (7 cols) */}
         <div className="lg:col-span-7 space-y-8">
-          {/* Image Gallery */}
           <div className="space-y-3">
             <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm">
               <Image
@@ -189,7 +184,6 @@ export default function GearDetailsPage() {
               </span>
             </div>
 
-            {/* Thumbnail Selector */}
             {gear.images && gear.images.length > 1 && (
               <div className="flex gap-3">
                 {gear.images.map((img, idx) => (
@@ -209,7 +203,6 @@ export default function GearDetailsPage() {
             )}
           </div>
 
-          {/* Title & Brand */}
           <div className="space-y-2">
             <div className="flex items-center gap-3">
               <span className="rounded-lg bg-zinc-100 px-3 py-1 text-xs font-extrabold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
@@ -226,7 +219,6 @@ export default function GearDetailsPage() {
             </h1>
           </div>
 
-          {/* Product Specifications & Overview */}
           <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900 space-y-4 shadow-sm">
             <h3 className="text-xs font-extrabold text-zinc-900 dark:text-white uppercase tracking-wider">
               Product Overview & Specifications
@@ -251,7 +243,6 @@ export default function GearDetailsPage() {
             </div>
           </div>
 
-          {/* Verified Provider Info Card */}
           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-6 dark:border-zinc-800 dark:bg-zinc-950 flex items-center justify-between shadow-sm">
             <div className="flex items-center gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-600 text-white font-extrabold text-lg">
@@ -270,7 +261,7 @@ export default function GearDetailsPage() {
           </div>
         </div>
 
-        {/* Right Column: Booking Card (5 cols) */}
+        {/* Right Column: Interactive Date Calculator & Booking Card */}
         <div className="lg:col-span-5">
           <div className="sticky top-24 rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900 space-y-6">
             <div className="flex items-baseline justify-between border-b border-zinc-100 pb-4 dark:border-zinc-800">
@@ -281,11 +272,10 @@ export default function GearDetailsPage() {
                 <span className="text-xs text-zinc-400"> / day</span>
               </div>
               <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                ★ 100% Insured Rental
+                ★ Insured Booking
               </span>
             </div>
 
-            {/* Booking Date Range */}
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -315,7 +305,6 @@ export default function GearDetailsPage() {
                 </div>
               </div>
 
-              {/* Quantity Selector */}
               <div>
                 <label className="text-xs font-bold text-zinc-600 dark:text-zinc-400">
                   Quantity Needed
@@ -334,27 +323,25 @@ export default function GearDetailsPage() {
               </div>
             </div>
 
-            {/* Price Calculation Summary */}
             <div className="rounded-xl bg-zinc-50 p-4 dark:bg-zinc-950 space-y-2 text-xs">
               <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
                 <span>
-                  ${gear.pricePerDay} × {totalDays} day{totalDays > 1 ? "s" : ""} × {quantity}
+                  ${gear.pricePerDay} × {totalDays} day{totalDays > 1 ? "s" : ""} × {quantity} unit(s)
                 </span>
                 <span className="font-bold text-zinc-900 dark:text-white">
                   ${totalPrice}
                 </span>
               </div>
               <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
-                <span>Damage Protection Insurance</span>
+                <span>Equipment Protection Plan</span>
                 <span className="font-bold text-emerald-600">INCLUDED</span>
               </div>
               <div className="border-t border-zinc-200 pt-2 flex justify-between font-extrabold text-sm text-zinc-900 dark:text-white dark:border-zinc-800">
-                <span>Total Estimated Rate</span>
+                <span>Total Estimated</span>
                 <span className="text-emerald-600 dark:text-emerald-400">${totalPrice}</span>
               </div>
             </div>
 
-            {/* Action CTA */}
             <button
               onClick={handleBookingRedirect}
               disabled={!gear.isAvailable || gear.stock === 0}
