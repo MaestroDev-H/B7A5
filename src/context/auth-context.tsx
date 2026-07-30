@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react";
 import Cookies from "js-cookie";
-import { User } from "@/types";
+import { User, Role } from "@/types";
 import { apiClient } from "@/lib/api-client";
 
 interface AuthContextType {
@@ -12,6 +12,7 @@ interface AuthContextType {
   login: (token: string, user: User) => void;
   logout: () => void;
   refreshUser: () => Promise<void>;
+  hasRole: (role: Role) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -63,8 +64,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     window.location.href = "/login";
   };
 
+  const hasRole = (role: Role) => {
+    return user?.role === role;
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, logout, refreshUser }}>
+    <AuthContext.Provider
+      value={{ user, token, isLoading, login, logout, refreshUser, hasRole }}
+    >
       {children}
     </AuthContext.Provider>
   );
