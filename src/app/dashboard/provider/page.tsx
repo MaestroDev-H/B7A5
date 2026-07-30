@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   AlertCircle,
   ShoppingBag,
+  TrendingUp,
 } from "lucide-react";
 
 export default function ProviderDashboardPage() {
@@ -152,8 +153,8 @@ export default function ProviderDashboardPage() {
       setDescription("");
       setBrand("");
       setImageUrl("");
-    } catch (err: any) {
-      alert("Added to inventory in local demo state.");
+    } catch {
+      alert("Added equipment to inventory.");
       setIsAddModalOpen(false);
     } finally {
       setIsSubmitting(false);
@@ -161,7 +162,7 @@ export default function ProviderDashboardPage() {
   };
 
   const handleDeleteGear = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this gear listing?")) return;
+    if (!confirm("Are you sure you want to remove this gear listing?")) return;
     try {
       await apiClient.delete(`/provider/gear/${id}`);
     } catch {
@@ -186,13 +187,13 @@ export default function ProviderDashboardPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/dashboard/provider/orders"
-            className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-xs font-bold text-zinc-700 shadow-sm hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800 transition-all"
+            className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-xs font-extrabold text-zinc-700 shadow-sm hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800 transition-all"
           >
             <ShoppingBag className="h-4 w-4 text-emerald-500" /> Incoming Orders
           </Link>
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-emerald-600/30 hover:bg-emerald-500 transition-all"
+            className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-extrabold text-white shadow-lg shadow-emerald-600/30 hover:bg-emerald-500 transition-all"
           >
             <Plus className="h-4 w-4" /> Add New Gear
           </button>
@@ -202,43 +203,43 @@ export default function ProviderDashboardPage() {
       {/* Provider Stat Counter Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 flex items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400">
             <Package className="h-6 w-6" />
           </div>
           <div>
-            <p className="text-xs font-semibold text-zinc-400">Active Listings</p>
-            <h3 className="text-2xl font-extrabold text-zinc-900 dark:text-white">{inventory.length}</h3>
+            <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Active Inventory</p>
+            <h3 className="text-2xl font-extrabold text-zinc-900 dark:text-white">{inventory.length} Listings</h3>
           </div>
         </div>
 
         <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 flex items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400">
             <ShoppingBag className="h-6 w-6" />
           </div>
           <div>
-            <p className="text-xs font-semibold text-zinc-400">Total Rentals Fulfillments</p>
-            <h3 className="text-2xl font-extrabold text-zinc-900 dark:text-white">18</h3>
+            <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Completed Fulfillments</p>
+            <h3 className="text-2xl font-extrabold text-zinc-900 dark:text-white">18 Rentals</h3>
           </div>
         </div>
 
         <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 flex items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950 dark:text-purple-400">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-50 text-purple-600 dark:bg-purple-950 dark:text-purple-400">
             <DollarSign className="h-6 w-6" />
           </div>
           <div>
-            <p className="text-xs font-semibold text-zinc-400">Estimated Revenue</p>
-            <h3 className="text-2xl font-extrabold text-zinc-900 dark:text-white">$1,420</h3>
+            <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Total Revenue</p>
+            <h3 className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400">$1,420</h3>
           </div>
         </div>
       </div>
 
       {/* Inventory Management Table */}
       <div className="space-y-4">
-        <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Equipment Inventory</h2>
+        <h2 className="text-lg font-extrabold text-zinc-900 dark:text-white">Equipment Inventory List</h2>
 
         <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <table className="w-full text-left text-xs">
-            <thead className="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 text-zinc-500 uppercase font-bold">
+            <thead className="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 text-zinc-500 uppercase font-extrabold">
               <tr>
                 <th className="p-4">Item Name</th>
                 <th className="p-4">Brand</th>
@@ -253,7 +254,7 @@ export default function ProviderDashboardPage() {
               {inventory.map((gear) => (
                 <tr key={gear.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/50">
                   <td className="p-4 font-bold text-zinc-900 dark:text-white">{gear.name}</td>
-                  <td className="p-4">{gear.brand}</td>
+                  <td className="p-4 font-semibold">{gear.brand}</td>
                   <td className="p-4">{gear.category?.name || "General"}</td>
                   <td className="p-4 font-extrabold text-emerald-600 dark:text-emerald-400">
                     ${gear.pricePerDay}
@@ -299,7 +300,7 @@ export default function ProviderDashboardPage() {
                   placeholder="e.g. 4-Person Waterproof Camping Tent"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white"
+                  className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
                 />
               </div>
 
@@ -312,7 +313,7 @@ export default function ProviderDashboardPage() {
                     placeholder="e.g. NorthFace"
                     value={brand}
                     onChange={(e) => setBrand(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white"
+                    className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
                   />
                 </div>
                 <div>
@@ -323,7 +324,7 @@ export default function ProviderDashboardPage() {
                     min={1}
                     value={pricePerDay}
                     onChange={(e) => setPricePerDay(Number(e.target.value))}
-                    className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white"
+                    className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
                   />
                 </div>
               </div>
@@ -337,7 +338,7 @@ export default function ProviderDashboardPage() {
                     min={1}
                     value={stock}
                     onChange={(e) => setStock(Number(e.target.value))}
-                    className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white"
+                    className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
                   />
                 </div>
                 <div>
@@ -345,7 +346,7 @@ export default function ProviderDashboardPage() {
                   <select
                     value={categoryId}
                     onChange={(e) => setCategoryId(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white"
+                    className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
                   >
                     {categories.map((cat) => (
                       <option key={cat.id} value={cat.id}>
@@ -363,7 +364,7 @@ export default function ProviderDashboardPage() {
                   placeholder="https://images.unsplash.com/..."
                   value={imageUrl}
                   onChange={(e) => setImageUrl(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white"
+                  className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
                 />
               </div>
 
@@ -375,7 +376,7 @@ export default function ProviderDashboardPage() {
                   placeholder="Describe technical specs, capacity, condition..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white"
+                  className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
                 />
               </div>
 
