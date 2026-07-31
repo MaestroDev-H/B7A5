@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { apiClient } from "@/lib/api-client";
 import { CreditCard, CheckCircle2, AlertCircle, Lock } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface StripeCheckoutFormProps {
   clientSecret: string;
@@ -33,21 +34,18 @@ export function StripeCheckoutForm({
     setCardError("");
 
     if (!stripe || !elements) {
-      // Direct confirmation fallback if Stripe SDK isn't active
-      try {
-        await apiClient.post("/payments/confirm", {
-          transactionId,
-        });
-      } catch (confirmErr: any) {
-        console.warn("Payment confirmation notice:", confirmErr);
-      }
-      onSuccess(rentalOrderId, totalPrice);
+      const msg = "Stripe SDK is not initialized yet. Please refresh and try again.";
+      setCardError(msg);
+      onError(msg);
       setIsProcessing(false);
       return;
     }
 
     const cardElement = elements.getElement(CardElement);
     if (!cardElement) {
+      const msg = "Credit card input field missing.";
+      setCardError(msg);
+      onError(msg);
       setIsProcessing(false);
       return;
     }
@@ -61,30 +59,35 @@ export function StripeCheckoutForm({
       });
 
       if (error) {
-        setCardError(error.message || "Payment failed with Stripe.");
-        onError(error.message || "Payment failed with Stripe.");
+        const errMsg = error.message || "Payment failed with Stripe.";
+        setCardError(errMsg);
+        onError(errMsg);
         setIsProcessing(false);
         return;
       }
 
       if (paymentIntent && paymentIntent.status === "succeeded") {
         // 2. Call backend to verify & update order status to PAID
-        try {
-          await apiClient.post("/payments/confirm", {
-            transactionId: paymentIntent.id || transactionId,
-          });
-        } catch (confirmErr: any) {
-          console.warn("Backend payment confirm sync:", confirmErr);
-        }
+        const confirmRes = await apiClient.post("/payments/confirm", {
+          transactionId: paymentIntent.id || transactionId,
+        });
 
-        onSuccess(rentalOrderId, totalPrice);
+        if (confirmRes.data?.success || confirmRes.status === 200 || confirmRes.status === 201) {
+          onSuccess(rentalOrderId, totalPrice);
+        } else {
+          const errMsg = confirmRes.data?.message || "Failed to confirm payment with server.";
+          setCardError(errMsg);
+          onError(errMsg);
+        }
       } else {
-        // Fallback for test mode or local verification
-        onSuccess(rentalOrderId, totalPrice);
+        const errMsg = `Stripe payment failed. Status: ${paymentIntent?.status || "unpaid"}.`;
+        setCardError(errMsg);
+        onError(errMsg);
       }
     } catch (err: any) {
-      setCardError(err.message || "An unexpected error occurred during payment processing.");
-      onError(err.message || "Payment failed.");
+      const errMsg = err.response?.data?.message || err.message || "An unexpected error occurred during payment processing.";
+      setCardError(errMsg);
+      onError(errMsg);
     } finally {
       setIsProcessing(false);
     }
@@ -94,7 +97,7 @@ export function StripeCheckoutForm({
     <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl border border-zinc-200 bg-zinc-50/50 p-5 dark:border-zinc-800 dark:bg-zinc-950">
       <div className="flex items-center justify-between border-b border-zinc-200 pb-3 dark:border-zinc-800">
         <span className="text-xs font-extrabold text-zinc-900 dark:text-white flex items-center gap-2">
-          <CreditCard className="h-4 w-4 text-emerald-500" /> Enter Card Details
+          <CreditCard className="h-4 w-4 text-emerald-500" /> Enter Credit Card Details
         </span>
         <span className="text-[10px] font-bold text-zinc-400 flex items-center gap-1">
           <Lock className="h-3 w-3 text-emerald-600" /> 256-bit Encrypted
@@ -102,7 +105,7 @@ export function StripeCheckoutForm({
       </div>
 
       {cardError && (
-        <div className="flex items-center gap-2 rounded-xl bg-rose-50 p-3 text-xs font-bold text-rose-600 dark:bg-rose-950/40">
+        <div className="flex items-center gap-2 rounded-xl bg-rose-50 p-3 text-xs font-bold text-rose-600 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span>{cardError}</span>
         </div>
@@ -127,14 +130,14 @@ export function StripeCheckoutForm({
         />
       </div>
 
-      <button
+      <Button
         type="submit"
-        disabled={isProcessing}
-        className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3.5 text-xs sm:text-sm font-extrabold text-white shadow-lg shadow-emerald-600/30 hover:bg-emerald-500 disabled:opacity-50 transition-all"
+        disabled={!stripe || isProcessing}
+        className="w-full h-12 text-xs sm:text-sm font-extrabold"
       >
         {isProcessing ? "Processing Stripe Payment..." : `Pay $${totalPrice} via Stripe`}
-        <CheckCircle2 className="h-4 w-4" />
-      </button>
+        <CheckCircle2 className="ml-2 h-4 w-4" />
+      </Button>
     </form>
   );
 }

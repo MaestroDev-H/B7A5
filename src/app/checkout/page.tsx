@@ -89,17 +89,19 @@ export default function CheckoutPage() {
           transactionId,
           rentalOrderId,
         });
-      } else {
-        // Direct confirmation fallback if backend runs in mock or offline mode
-        try {
-          await apiClient.post("/payments/confirm", { transactionId });
-        } catch {
-          // ignore
+      } else if (transactionId) {
+        // Confirm payment with backend & verify explicit response
+        const confirmRes = await apiClient.post("/payments/confirm", { transactionId });
+        if (confirmRes.data?.success || confirmRes.status === 200 || confirmRes.status === 201) {
+          handlePaymentSuccess(rentalOrderId, draft.totalPrice);
+        } else {
+          throw new Error("Payment session confirmation failed on server.");
         }
-        handlePaymentSuccess(rentalOrderId, draft.totalPrice);
+      } else {
+        throw new Error("Failed to initialize payment gateway session from server.");
       }
     } catch (err: any) {
-      setErrorMessage(err.message || "Failed to process rental order. Please try again.");
+      setErrorMessage(err.response?.data?.message || err.message || "Failed to process rental order. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
