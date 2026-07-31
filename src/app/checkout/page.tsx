@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/context/auth-context";
 import { StripeCheckoutForm } from "@/components/stripe-checkout-form";
@@ -14,7 +15,6 @@ import {
   CheckCircle2,
   AlertCircle,
   Calendar,
-  MapPin,
   ArrowLeft,
   Lock,
 } from "lucide-react";
@@ -26,9 +26,9 @@ const stripePromise = loadStripe(
 export default function CheckoutPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [draft, setDraft] = useState<any>(null);
   const [paymentMethod, setPaymentMethod] = useState<"stripe" | "sslcommerz" | "cash">("stripe");
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
   // Stripe Payment Intent State
@@ -51,13 +51,44 @@ export default function CheckoutPage() {
     }
   }, [router]);
 
+  // TanStack React Query Mutation: Create Rental Order
+  const createOrderMutation = useMutation({
+    mutationFn: async (orderPayload: any) => {
+      const res = await apiClient.post("/rentals", orderPayload);
+      return res.data?.data;
+    },
+  });
+
+  // TanStack React Query Mutation: Create Stripe Payment Intent & Invalidate Customer Queries
+  const createPaymentMutation = useMutation({
+    mutationFn: async ({
+      rentalOrderId,
+      method,
+      amount,
+    }: {
+      rentalOrderId: string;
+      method: string;
+      amount: number;
+    }) => {
+      const res = await apiClient.post("/payments/create", {
+        rentalOrderId,
+        method,
+        amount,
+      });
+      return res.data?.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["customer-rentals"] });
+      queryClient.invalidateQueries({ queryKey: ["customer-payments"] });
+      queryClient.invalidateQueries({ queryKey: ["my-rentals"] });
+    },
+  });
+
   const handleInitiateOrder = async () => {
     if (!draft || !draft.gearItem) return;
-    setIsSubmitting(true);
     setErrorMessage("");
 
     try {
-      // 1. Create rental order on backend
       const orderPayload = {
         startDate: draft.startDate,
         endDate: draft.endDate,
@@ -69,18 +100,18 @@ export default function CheckoutPage() {
         ],
       };
 
-      const res = await apiClient.post("/rentals", orderPayload);
-      const createdOrder = res.data?.data;
+      // 1. Create Rental Order via TanStack React Query Mutation
+      const createdOrder = await createOrderMutation.mutateAsync(orderPayload);
       const rentalOrderId = createdOrder?.id || `ORD-${Date.now()}`;
 
-      // 2. Create PaymentIntent on backend -> returns { clientSecret, payment }
-      const paymentRes = await apiClient.post("/payments/create", {
+      // 2. Create Payment Intent via TanStack React Query Mutation
+      const paymentDataRes = await createPaymentMutation.mutateAsync({
         rentalOrderId,
         method: paymentMethod,
         amount: draft.totalPrice,
       });
 
-      const { clientSecret, payment } = paymentRes.data?.data || {};
+      const { clientSecret, payment } = paymentDataRes || {};
       const transactionId = payment?.transactionId || `TXN-${Date.now()}`;
 
       if (!clientSecret) {
@@ -94,8 +125,6 @@ export default function CheckoutPage() {
       });
     } catch (err: any) {
       setErrorMessage(err.response?.data?.message || err.message || "Failed to process rental order. Please try again.");
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -113,6 +142,7 @@ export default function CheckoutPage() {
   }
 
   const { gearItem, startDate, endDate, totalDays, quantity, totalPrice } = draft;
+  const isSubmitting = createOrderMutation.isPending || createPaymentMutation.isPending;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 space-y-8">
@@ -133,161 +163,99 @@ export default function CheckoutPage() {
       </div>
 
       {errorMessage && (
-        <div className="flex items-center gap-2 rounded-2xl bg-rose-50 p-4 text-xs font-bold text-rose-600 dark:bg-rose-950/40 dark:text-rose-400">
-          <AlertCircle className="h-4 w-4 shrink-0" />
+        <div className="flex items-center gap-2 rounded-2xl bg-rose-50 p-4 text-xs font-bold text-rose-600 border border-rose-200 dark:bg-rose-950/40 dark:border-rose-900">
+          <AlertCircle className="h-5 w-5 shrink-0" />
           <span>{errorMessage}</span>
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-        {/* Left: Summary & Details */}
+        {/* Left Column: Equipment Summary & Gateway Selection */}
         <div className="lg:col-span-7 space-y-6">
-          {/* Gear item summary card */}
-          <div className="flex gap-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-            <div className="relative h-24 w-28 shrink-0 overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-800">
-              <Image
-                src={gearItem.images?.[0] || "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4"}
-                alt={gearItem.name}
-                fill
-                className="object-cover"
-              />
-            </div>
-            <div className="flex-1 space-y-1">
-              <span className="text-[10px] font-extrabold uppercase text-emerald-600 dark:text-emerald-400">
-                {gearItem.category?.name || "Equipment"}
-              </span>
-              <h3 className="text-base font-bold text-zinc-900 dark:text-white">{gearItem.name}</h3>
-              <p className="text-xs text-zinc-500">Brand: {gearItem.brand}</p>
-              <div className="pt-2 text-xs font-extrabold text-zinc-900 dark:text-white">
-                ${gearItem.pricePerDay} / day × {quantity} unit(s)
-              </div>
-            </div>
-          </div>
-
-          {/* Rental Duration Details */}
-          <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 space-y-4">
-            <h3 className="text-xs font-extrabold uppercase tracking-wider text-zinc-900 dark:text-white flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-emerald-500" /> Rental Schedule Overview
-            </h3>
-            <div className="grid grid-cols-2 gap-4 text-xs bg-zinc-50 p-4 rounded-xl dark:bg-zinc-950">
-              <div>
-                <span className="text-zinc-400">Pickup Date:</span>
-                <p className="font-bold text-zinc-900 dark:text-white text-sm">{startDate}</p>
-              </div>
-              <div>
-                <span className="text-zinc-400">Return Date:</span>
-                <p className="font-bold text-zinc-900 dark:text-white text-sm">{endDate}</p>
-              </div>
-              <div className="col-span-2 pt-2 border-t border-zinc-200 dark:border-zinc-800 flex justify-between">
-                <span className="text-zinc-400 font-medium">Total Duration:</span>
-                <span className="font-extrabold text-emerald-600 dark:text-emerald-400">
-                  {totalDays} Days
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Pickup Location Info */}
-          <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 space-y-3">
-            <h3 className="text-xs font-extrabold uppercase tracking-wider text-zinc-900 dark:text-white flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-emerald-500" /> Pickup & Return Center
-            </h3>
-            <p className="text-xs text-zinc-500 leading-relaxed font-medium">
-              GearUp Pickup Hub #4 (Gulshan Avenue, Dhaka). Verified equipment handoff with mandatory inspection checklist upon pickup.
-            </p>
-          </div>
-        </div>
-
-        {/* Right: Payment Method & Confirm */}
-        <div className="lg:col-span-5 space-y-6">
-          <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900 space-y-6">
-            <h3 className="text-sm font-extrabold text-zinc-900 dark:text-white flex items-center gap-2 uppercase tracking-wider">
-              <CreditCard className="h-5 w-5 text-emerald-500" /> Payment Gateway
+          <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 space-y-4">
+            <h3 className="text-base font-extrabold text-zinc-900 dark:text-white flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-emerald-500" /> Selected Rental Dates
             </h3>
 
-            {!paymentData ? (
-              <>
-                <div className="space-y-3">
-                  <label
-                    onClick={() => setPaymentMethod("stripe")}
-                    className={`flex items-center justify-between rounded-2xl border p-4 cursor-pointer transition-all ${
-                      paymentMethod === "stripe"
-                        ? "border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/30 shadow-sm"
-                        : "border-zinc-200 dark:border-zinc-800"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white font-extrabold text-xs shadow-sm">
-                        S
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-zinc-900 dark:text-white">Stripe Payment Gateway</p>
-                        <p className="text-[10px] text-zinc-400 font-medium">Credit Card, Visa, Mastercard, Apple Pay</p>
-                      </div>
-                    </div>
-                    <input
-                      type="radio"
-                      name="payment"
-                      checked={paymentMethod === "stripe"}
-                      onChange={() => {}}
-                      className="accent-emerald-600"
-                    />
-                  </label>
-
-                  <label
-                    onClick={() => setPaymentMethod("sslcommerz")}
-                    className={`flex items-center justify-between rounded-2xl border p-4 cursor-pointer transition-all ${
-                      paymentMethod === "sslcommerz"
-                        ? "border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/30 shadow-sm"
-                        : "border-zinc-200 dark:border-zinc-800"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white font-extrabold text-xs shadow-sm">
-                        SSL
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-zinc-900 dark:text-white">SSLCommerz Gateway</p>
-                        <p className="text-[10px] text-zinc-400 font-medium">bKash, Nagad, Mobile Banking, Local Cards</p>
-                      </div>
-                    </div>
-                    <input
-                      type="radio"
-                      name="payment"
-                      checked={paymentMethod === "sslcommerz"}
-                      onChange={() => {}}
-                      className="accent-emerald-600"
-                    />
-                  </label>
+            <div className="flex items-center gap-4 bg-zinc-50 p-4 rounded-2xl dark:bg-zinc-950">
+              <div className="relative h-16 w-20 overflow-hidden rounded-xl bg-zinc-200 shrink-0">
+                <Image
+                  src={gearItem.images?.[0] || "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4"}
+                  alt={gearItem.name}
+                  fill
+                  className="object-cover"
+                />
+              </div>
+              <div className="flex-1 space-y-1">
+                <h4 className="text-sm font-bold text-zinc-900 dark:text-white">{gearItem.name}</h4>
+                <div className="flex justify-between text-xs text-zinc-500 font-medium">
+                  <span>{startDate} → {endDate}</span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">{totalDays} Days ({quantity} unit)</span>
                 </div>
+              </div>
+            </div>
+          </div>
 
-                {/* Price Summary */}
-                <div className="space-y-2 border-t border-zinc-100 pt-4 text-xs dark:border-zinc-800">
-                  <div className="flex justify-between text-zinc-500">
-                    <span>Equipment Rental (${gearItem.pricePerDay} × {totalDays}d)</span>
-                    <span className="font-bold text-zinc-900 dark:text-white">${totalPrice}</span>
-                  </div>
-                  <div className="flex justify-between text-zinc-500">
-                    <span>Damage Protection Insurance</span>
-                    <span className="font-extrabold text-emerald-600">INCLUDED</span>
-                  </div>
-                  <div className="flex justify-between border-t border-zinc-200 pt-2 text-base font-extrabold text-zinc-900 dark:text-white dark:border-zinc-800">
-                    <span>Total Due Now</span>
-                    <span className="text-emerald-600 dark:text-emerald-400">${totalPrice}</span>
-                  </div>
-                </div>
+          {!paymentData ? (
+            <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 space-y-6">
+              <h3 className="text-base font-extrabold text-zinc-900 dark:text-white flex items-center gap-2">
+                <CreditCard className="h-5 w-5 text-emerald-500" /> Select Payment Method
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod("stripe")}
+                  className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all ${
+                    paymentMethod === "stripe"
+                      ? "border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300 shadow-md"
+                      : "border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300"
+                  }`}
+                >
+                  <CreditCard className="h-6 w-6 mb-2" />
+                  <span className="text-xs font-bold">Stripe Card</span>
+                  <span className="text-[10px] text-zinc-400 font-medium mt-0.5">Instant Card Payment</span>
+                </button>
 
                 <button
-                  onClick={handleInitiateOrder}
-                  disabled={isSubmitting}
-                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3.5 text-xs sm:text-sm font-extrabold text-white shadow-lg shadow-emerald-600/30 hover:bg-emerald-500 disabled:opacity-50 transition-all"
+                  type="button"
+                  onClick={() => setPaymentMethod("sslcommerz")}
+                  className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all ${
+                    paymentMethod === "sslcommerz"
+                      ? "border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300 shadow-md"
+                      : "border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300"
+                  }`}
                 >
-                  {isSubmitting ? "Creating Payment Intent..." : `Proceed to Pay $${totalPrice}`}
-                  <CheckCircle2 className="h-4 w-4" />
+                  <Lock className="h-6 w-6 mb-2" />
+                  <span className="text-xs font-bold">SSLCommerz</span>
+                  <span className="text-[10px] text-zinc-400 font-medium mt-0.5">Mobile Banking / BKash</span>
                 </button>
-              </>
-            ) : (
-              /* Stripe Elements Form Active State */
+
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod("cash")}
+                  className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all ${
+                    paymentMethod === "cash"
+                      ? "border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300 shadow-md"
+                      : "border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300"
+                  }`}
+                >
+                  <CheckCircle2 className="h-6 w-6 mb-2" />
+                  <span className="text-xs font-bold">Pay on Pickup</span>
+                  <span className="text-[10px] text-zinc-400 font-medium mt-0.5">Cash / Local Vendor</span>
+                </button>
+              </div>
+
+              <button
+                onClick={handleInitiateOrder}
+                disabled={isSubmitting}
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3.5 text-xs sm:text-sm font-extrabold text-white shadow-lg shadow-emerald-600/30 hover:bg-emerald-500 disabled:opacity-50 transition-all"
+              >
+                {isSubmitting ? "Initializing Payment Session..." : `Proceed with ${paymentMethod.toUpperCase()} Payment`}
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
               <Elements stripe={stripePromise} options={{ clientSecret: paymentData.clientSecret }}>
                 <StripeCheckoutForm
                   clientSecret={paymentData.clientSecret}
@@ -298,7 +266,40 @@ export default function CheckoutPage() {
                   onError={(err) => setErrorMessage(err)}
                 />
               </Elements>
-            )}
+            </div>
+          )}
+        </div>
+
+        {/* Right Column: Cost Breakdown Sidebar */}
+        <div className="lg:col-span-5 space-y-6">
+          <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900 space-y-6">
+            <h3 className="text-base font-extrabold text-zinc-900 dark:text-white border-b border-zinc-100 pb-3 dark:border-zinc-800">
+              Payment Breakdown
+            </h3>
+
+            <div className="space-y-3 text-xs">
+              <div className="flex justify-between text-zinc-500">
+                <span>Equipment Rental Rate (${gearItem.pricePerDay}/day)</span>
+                <span className="font-bold text-zinc-900 dark:text-white">${gearItem.pricePerDay * totalDays}</span>
+              </div>
+
+              {quantity > 1 && (
+                <div className="flex justify-between text-zinc-500">
+                  <span>Quantity ({quantity} units)</span>
+                  <span className="font-bold text-zinc-900 dark:text-white font-mono">× {quantity}</span>
+                </div>
+              )}
+
+              <div className="flex justify-between text-zinc-500">
+                <span>Damage Protection & Service Fee</span>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400">Included ($0)</span>
+              </div>
+
+              <div className="flex justify-between border-t border-zinc-100 pt-3 text-base font-extrabold text-zinc-900 dark:text-white dark:border-zinc-800">
+                <span>Total Amount Due</span>
+                <span className="text-emerald-600 dark:text-emerald-400">${totalPrice}</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
