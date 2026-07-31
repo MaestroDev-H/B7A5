@@ -237,8 +237,8 @@ export default function ProviderDashboardPage() {
       <div className="space-y-4">
         <h2 className="text-lg font-extrabold text-zinc-900 dark:text-white">Equipment Inventory List</h2>
 
-        <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <table className="w-full text-left text-xs">
+        <div className="overflow-x-auto rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <table className="w-full text-left text-xs whitespace-nowrap">
             <thead className="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 text-zinc-500 uppercase font-extrabold">
               <tr>
                 <th className="p-4">Item Name</th>
