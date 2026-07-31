@@ -17,6 +17,8 @@ import {
   ChevronDown,
 } from "lucide-react";
 
+import { ThemeToggle } from "@/components/theme-toggle";
+
 export const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
   const pathname = usePathname();
@@ -79,6 +81,7 @@ export const Navbar: React.FC = () => {
 
         {/* Desktop User Action */}
         <div className="hidden md:flex items-center gap-3">
+          <ThemeToggle />
           {user ? (
             <div className="relative">
               <button
@@ -148,14 +151,17 @@ export const Navbar: React.FC = () => {
           )}
         </div>
 
-        {/* Mobile Toggle Button */}
-        <button
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          aria-label="Toggle mobile navigation menu"
-          className="md:hidden p-2 text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white"
-        >
-          {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </button>
+        {/* Mobile Controls */}
+        <div className="flex items-center gap-2 md:hidden">
+          <ThemeToggle />
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            aria-label="Toggle mobile navigation menu"
+            className="p-2 text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white"
+          >
+            {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile Drawer */}
