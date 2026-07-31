@@ -39,7 +39,8 @@ This document maps all **GearUp Frontend** pages, components, and contexts to th
 | Component / Page File | HTTP Method | Backend Endpoint | Auth Required | Description / Payload |
 |-----------------------|-------------|------------------|---------------|-----------------------|
 | [`frontend/src/app/checkout/page.tsx`](file:///g:/NextLevel_B7/B7A4_A5/frontend/src/app/checkout/page.tsx) | `POST` | `/api/rentals` | Yes (Customer) | Create rental order with `{ gearId, startDate, endDate, totalPrice }`. |
-| [`frontend/src/app/checkout/page.tsx`](file:///g:/NextLevel_B7/B7A4_A5/frontend/src/app/checkout/page.tsx) | `POST` | `/api/payments/create` | Yes (Customer) | Create payment intent/session for order with `{ rentalOrderId, amount, paymentMethod }`. |
+| [`frontend/src/app/checkout/page.tsx`](file:///g:/NextLevel_B7/B7A4_A5/frontend/src/app/checkout/page.tsx) | `POST` | `/api/payments/create` | Yes (Customer) | Create Stripe PaymentIntent for order with `{ rentalOrderId, method, amount }`. Returns `{ clientSecret, payment }`. |
+| [`frontend/src/app/checkout/page.tsx`](file:///g:/NextLevel_B7/B7A4_A5/frontend/src/app/checkout/page.tsx) | `POST` | `/api/payments/confirm` | Yes (Customer) | Verify Stripe payment transaction with `{ transactionId }` and update order status to `PAID`. |
 
 ---
 

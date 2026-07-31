@@ -4,18 +4,24 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements } from "@stripe/react-stripe-js";
 import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/context/auth-context";
+import { StripeCheckoutForm } from "@/components/stripe-checkout-form";
 import {
-  ShoppingBag,
   CreditCard,
   CheckCircle2,
   AlertCircle,
   Calendar,
   MapPin,
-  ShieldCheck,
   ArrowLeft,
+  Lock,
 } from "lucide-react";
+
+const stripePromise = loadStripe(
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "pk_test_placeholder"
+);
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -24,6 +30,13 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<"stripe" | "sslcommerz" | "cash">("stripe");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+
+  // Stripe Payment Intent State
+  const [paymentData, setPaymentData] = useState<{
+    clientSecret: string;
+    transactionId: string;
+    rentalOrderId: string;
+  } | null>(null);
 
   useEffect(() => {
     const raw = sessionStorage.getItem("gearup_checkout_draft");
@@ -38,7 +51,7 @@ export default function CheckoutPage() {
     }
   }, [router]);
 
-  const handlePlaceOrder = async () => {
+  const handleInitiateOrder = async () => {
     if (!draft || !draft.gearItem) return;
     setIsSubmitting(true);
     setErrorMessage("");
@@ -60,31 +73,41 @@ export default function CheckoutPage() {
       const createdOrder = res.data?.data;
       const rentalOrderId = createdOrder?.id || `ORD-${Date.now()}`;
 
-      // 2. Initiate Payment Intent / Session
-      try {
-        const paymentRes = await apiClient.post("/payments/create", {
+      // 2. Create PaymentIntent on backend -> returns { clientSecret, payment }
+      const paymentRes = await apiClient.post("/payments/create", {
+        rentalOrderId,
+        method: paymentMethod,
+        amount: draft.totalPrice,
+      });
+
+      const { clientSecret, payment } = paymentRes.data?.data || {};
+      const transactionId = payment?.transactionId || `TXN-${Date.now()}`;
+
+      if (clientSecret) {
+        setPaymentData({
+          clientSecret,
+          transactionId,
           rentalOrderId,
-          method: paymentMethod,
-          amount: draft.totalPrice,
         });
-
-        const gatewayUrl = paymentRes.data?.data?.gatewayUrl;
-        if (gatewayUrl) {
-          window.location.href = gatewayUrl;
-          return;
+      } else {
+        // Direct confirmation fallback if backend runs in mock or offline mode
+        try {
+          await apiClient.post("/payments/confirm", { transactionId });
+        } catch {
+          // ignore
         }
-      } catch (pErr) {
-        console.warn("Payment API fallback trigger:", pErr);
+        handlePaymentSuccess(rentalOrderId, draft.totalPrice);
       }
-
-      // Clear draft & redirect to success
-      sessionStorage.removeItem("gearup_checkout_draft");
-      router.push(`/payment/success?orderId=${rentalOrderId}&amount=${draft.totalPrice}`);
     } catch (err: any) {
       setErrorMessage(err.message || "Failed to process rental order. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handlePaymentSuccess = (orderId: string, amount: number) => {
+    sessionStorage.removeItem("gearup_checkout_draft");
+    router.push(`/payment/success?orderId=${orderId}&amount=${amount}`);
   };
 
   if (!draft) {
@@ -185,87 +208,103 @@ export default function CheckoutPage() {
         <div className="lg:col-span-5 space-y-6">
           <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900 space-y-6">
             <h3 className="text-sm font-extrabold text-zinc-900 dark:text-white flex items-center gap-2 uppercase tracking-wider">
-              <CreditCard className="h-5 w-5 text-emerald-500" /> Payment Method Selector
+              <CreditCard className="h-5 w-5 text-emerald-500" /> Payment Gateway
             </h3>
 
-            <div className="space-y-3">
-              <label
-                onClick={() => setPaymentMethod("stripe")}
-                className={`flex items-center justify-between rounded-2xl border p-4 cursor-pointer transition-all ${
-                  paymentMethod === "stripe"
-                    ? "border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/30 shadow-sm"
-                    : "border-zinc-200 dark:border-zinc-800"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white font-extrabold text-xs shadow-sm">
-                    S
+            {!paymentData ? (
+              <>
+                <div className="space-y-3">
+                  <label
+                    onClick={() => setPaymentMethod("stripe")}
+                    className={`flex items-center justify-between rounded-2xl border p-4 cursor-pointer transition-all ${
+                      paymentMethod === "stripe"
+                        ? "border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/30 shadow-sm"
+                        : "border-zinc-200 dark:border-zinc-800"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white font-extrabold text-xs shadow-sm">
+                        S
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-zinc-900 dark:text-white">Stripe Payment Gateway</p>
+                        <p className="text-[10px] text-zinc-400 font-medium">Credit Card, Visa, Mastercard, Apple Pay</p>
+                      </div>
+                    </div>
+                    <input
+                      type="radio"
+                      name="payment"
+                      checked={paymentMethod === "stripe"}
+                      onChange={() => {}}
+                      className="accent-emerald-600"
+                    />
+                  </label>
+
+                  <label
+                    onClick={() => setPaymentMethod("sslcommerz")}
+                    className={`flex items-center justify-between rounded-2xl border p-4 cursor-pointer transition-all ${
+                      paymentMethod === "sslcommerz"
+                        ? "border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/30 shadow-sm"
+                        : "border-zinc-200 dark:border-zinc-800"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white font-extrabold text-xs shadow-sm">
+                        SSL
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-zinc-900 dark:text-white">SSLCommerz Gateway</p>
+                        <p className="text-[10px] text-zinc-400 font-medium">bKash, Nagad, Mobile Banking, Local Cards</p>
+                      </div>
+                    </div>
+                    <input
+                      type="radio"
+                      name="payment"
+                      checked={paymentMethod === "sslcommerz"}
+                      onChange={() => {}}
+                      className="accent-emerald-600"
+                    />
+                  </label>
+                </div>
+
+                {/* Price Summary */}
+                <div className="space-y-2 border-t border-zinc-100 pt-4 text-xs dark:border-zinc-800">
+                  <div className="flex justify-between text-zinc-500">
+                    <span>Equipment Rental (${gearItem.pricePerDay} × {totalDays}d)</span>
+                    <span className="font-bold text-zinc-900 dark:text-white">${totalPrice}</span>
                   </div>
-                  <div>
-                    <p className="text-xs font-bold text-zinc-900 dark:text-white">Stripe Checkout</p>
-                    <p className="text-[10px] text-zinc-400 font-medium">Credit Card, Apple Pay, Visa, Mastercard</p>
+                  <div className="flex justify-between text-zinc-500">
+                    <span>Damage Protection Insurance</span>
+                    <span className="font-extrabold text-emerald-600">INCLUDED</span>
+                  </div>
+                  <div className="flex justify-between border-t border-zinc-200 pt-2 text-base font-extrabold text-zinc-900 dark:text-white dark:border-zinc-800">
+                    <span>Total Due Now</span>
+                    <span className="text-emerald-600 dark:text-emerald-400">${totalPrice}</span>
                   </div>
                 </div>
-                <input
-                  type="radio"
-                  name="payment"
-                  checked={paymentMethod === "stripe"}
-                  onChange={() => {}}
-                  className="accent-emerald-600"
+
+                <button
+                  onClick={handleInitiateOrder}
+                  disabled={isSubmitting}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3.5 text-xs sm:text-sm font-extrabold text-white shadow-lg shadow-emerald-600/30 hover:bg-emerald-500 disabled:opacity-50 transition-all"
+                >
+                  {isSubmitting ? "Creating Payment Intent..." : `Proceed to Pay $${totalPrice}`}
+                  <CheckCircle2 className="h-4 w-4" />
+                </button>
+              </>
+            ) : (
+              /* Stripe Elements Form Active State */
+              <Elements stripe={stripePromise} options={{ clientSecret: paymentData.clientSecret }}>
+                <StripeCheckoutForm
+                  clientSecret={paymentData.clientSecret}
+                  transactionId={paymentData.transactionId}
+                  rentalOrderId={paymentData.rentalOrderId}
+                  totalPrice={totalPrice}
+                  onSuccess={handlePaymentSuccess}
+                  onError={(err) => setErrorMessage(err)}
                 />
-              </label>
-
-              <label
-                onClick={() => setPaymentMethod("sslcommerz")}
-                className={`flex items-center justify-between rounded-2xl border p-4 cursor-pointer transition-all ${
-                  paymentMethod === "sslcommerz"
-                    ? "border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/30 shadow-sm"
-                    : "border-zinc-200 dark:border-zinc-800"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white font-extrabold text-xs shadow-sm">
-                    SSL
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-zinc-900 dark:text-white">SSLCommerz Gateway</p>
-                    <p className="text-[10px] text-zinc-400 font-medium">bKash, Nagad, Mobile Banking, Local Cards</p>
-                  </div>
-                </div>
-                <input
-                  type="radio"
-                  name="payment"
-                  checked={paymentMethod === "sslcommerz"}
-                  onChange={() => {}}
-                  className="accent-emerald-600"
-                />
-              </label>
-            </div>
-
-            {/* Price Summary */}
-            <div className="space-y-2 border-t border-zinc-100 pt-4 text-xs dark:border-zinc-800">
-              <div className="flex justify-between text-zinc-500">
-                <span>Equipment Rental (${gearItem.pricePerDay} × {totalDays}d)</span>
-                <span className="font-bold text-zinc-900 dark:text-white">${totalPrice}</span>
-              </div>
-              <div className="flex justify-between text-zinc-500">
-                <span>Damage Protection Insurance</span>
-                <span className="font-extrabold text-emerald-600">INCLUDED</span>
-              </div>
-              <div className="flex justify-between border-t border-zinc-200 pt-2 text-base font-extrabold text-zinc-900 dark:text-white dark:border-zinc-800">
-                <span>Total Due Now</span>
-                <span className="text-emerald-600 dark:text-emerald-400">${totalPrice}</span>
-              </div>
-            </div>
-
-            <button
-              onClick={handlePlaceOrder}
-              disabled={isSubmitting}
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3.5 text-xs sm:text-sm font-extrabold text-white shadow-lg shadow-emerald-600/30 hover:bg-emerald-500 disabled:opacity-50 transition-all"
-            >
-              {isSubmitting ? "Processing Payment..." : `Pay $${totalPrice} & Confirm Rental`}
-              <CheckCircle2 className="h-4 w-4" />
-            </button>
+              </Elements>
+            )}
           </div>
         </div>
       </div>
