@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { apiClient } from "@/lib/api-client";
-import { Dumbbell, ArrowRight, Lock, Mail, AlertCircle } from "lucide-react";
+import { Dumbbell, ArrowRight, Lock, Mail, AlertCircle, Sparkles } from "lucide-react";
 
 function LoginForm() {
   const router = useRouter();
@@ -53,11 +53,11 @@ function LoginForm() {
         <h2 className="text-2xl font-extrabold text-zinc-900 dark:text-white">
           Welcome Back to GearUp
         </h2>
-        <p className="text-xs text-zinc-500">Sign in to manage rentals & access your dashboard</p>
+        <p className="text-xs text-zinc-500">Sign in to manage rentals & access your role dashboard</p>
       </div>
 
       {errorMessage && (
-        <div className="flex items-center gap-2 rounded-xl bg-rose-50 p-3.5 text-xs font-semibold text-rose-600 dark:bg-rose-950/40 dark:text-rose-400">
+        <div className="flex items-center gap-2.5 rounded-2xl bg-rose-50 p-4 text-xs font-bold text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200/50 dark:border-rose-900/50">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span>{errorMessage}</span>
         </div>
@@ -65,7 +65,7 @@ function LoginForm() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+          <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300">
             Email Address
           </label>
           <div className="relative mt-1">
@@ -76,13 +76,13 @@ function LoginForm() {
               placeholder="customer@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-10 pr-4 py-2.5 text-sm text-zinc-900 focus:border-emerald-500 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white"
+              className="w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-10 pr-4 py-2.5 text-xs font-medium text-zinc-900 focus:border-emerald-500 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white"
             />
           </div>
         </div>
 
         <div>
-          <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+          <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300">
             Password
           </label>
           <div className="relative mt-1">
@@ -93,7 +93,7 @@ function LoginForm() {
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-10 pr-4 py-2.5 text-sm text-zinc-900 focus:border-emerald-500 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white"
+              className="w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-10 pr-4 py-2.5 text-xs font-medium text-zinc-900 focus:border-emerald-500 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white"
             />
           </div>
         </div>
@@ -101,16 +101,16 @@ function LoginForm() {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-600/30 hover:bg-emerald-500 disabled:opacity-50 transition-all"
+          className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-xs sm:text-sm font-extrabold text-white shadow-lg shadow-emerald-600/30 hover:bg-emerald-500 disabled:opacity-50 transition-all"
         >
-          {isLoading ? "Signing in..." : "Sign In"}
+          {isLoading ? "Signing in..." : "Sign In to Account"}
           <ArrowRight className="h-4 w-4" />
         </button>
       </form>
 
       <div className="text-center text-xs text-zinc-500 pt-2 border-t border-zinc-100 dark:border-zinc-800">
         Don't have an account?{" "}
-        <Link href="/register" className="font-bold text-emerald-600 hover:underline">
+        <Link href="/register" className="font-extrabold text-emerald-600 hover:underline">
           Register now
         </Link>
       </div>
@@ -121,7 +121,7 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <div className="flex min-h-[80vh] items-center justify-center px-4 py-12">
-      <Suspense fallback={<div className="text-xs text-zinc-400">Loading form...</div>}>
+      <Suspense fallback={<div className="text-xs text-zinc-400 font-bold">Loading authentication form...</div>}>
         <LoginForm />
       </Suspense>
     </div>
