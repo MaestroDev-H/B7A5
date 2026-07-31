@@ -53,12 +53,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const login = (newToken: string, newUser: User) => {
     Cookies.set("gearup_token", newToken, { expires: 7 });
+    if (newUser.role) {
+      Cookies.set("gearup_role", newUser.role, { expires: 7 });
+    }
     setToken(newToken);
     setUser(newUser);
   };
 
   const logout = () => {
     Cookies.remove("gearup_token");
+    Cookies.remove("gearup_role");
     setToken(null);
     setUser(null);
     window.location.href = "/login";

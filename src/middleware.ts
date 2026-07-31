@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 
 export function middleware(request: NextRequest) {
   const token = request.cookies.get("gearup_token")?.value;
+  const role = request.cookies.get("gearup_role")?.value;
   const { pathname } = request.nextUrl;
 
   const isAuthRoute = pathname.startsWith("/login") || pathname.startsWith("/register");
@@ -16,9 +17,21 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // 2. Authenticated users trying to access auth pages
+  // 2. Authenticated users trying to access auth pages (login/register)
   if (token && isAuthRoute) {
-    return NextResponse.redirect(new URL("/dashboard/customer", request.url));
+    const targetDashboard = role === "ADMIN" ? "/dashboard/admin" : role === "PROVIDER" ? "/dashboard/provider" : "/dashboard/customer";
+    return NextResponse.redirect(new URL(targetDashboard, request.url));
+  }
+
+  // 3. Role-based Dashboard Route Protection
+  if (token && role) {
+    if (pathname.startsWith("/dashboard/admin") && role !== "ADMIN") {
+      const fallback = role === "PROVIDER" ? "/dashboard/provider" : "/dashboard/customer";
+      return NextResponse.redirect(new URL(fallback, request.url));
+    }
+    if (pathname.startsWith("/dashboard/provider") && role !== "PROVIDER" && role !== "ADMIN") {
+      return NextResponse.redirect(new URL("/dashboard/customer", request.url));
+    }
   }
 
   return NextResponse.next();
