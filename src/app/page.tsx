@@ -1,21 +1,16 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import { GearItem, Category } from "@/types";
 import { GearGrid } from "@/components/gear/gear-grid";
 import { GearFilter } from "@/components/gear/gear-filter";
 import {
-  Dumbbell,
-  Compass,
-  ShieldCheck,
-  Zap,
   Sparkles,
   Search,
   Flame,
   CheckCircle2,
-  PackageCheck,
-  TrendingUp,
 } from "lucide-react";
 
 const DEMO_CATEGORIES: Category[] = [
@@ -144,48 +139,36 @@ const DEMO_GEAR: GearItem[] = [
 ];
 
 export default function HomePage() {
-  const [gearList, setGearList] = useState<GearItem[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  // TanStack React Query for Server State & Caching
+  const { data: gearList = DEMO_GEAR, isLoading: isGearLoading } = useQuery<GearItem[]>({
+    queryKey: ["gear-catalog"],
+    queryFn: async () => {
+      try {
+        const res = await apiClient.get("/gear");
+        return res.data?.data && res.data.data.length > 0 ? res.data.data : DEMO_GEAR;
+      } catch {
+        return DEMO_GEAR;
+      }
+    },
+  });
 
-  // Filters
+  const { data: categories = DEMO_CATEGORIES } = useQuery<Category[]>({
+    queryKey: ["gear-categories"],
+    queryFn: async () => {
+      try {
+        const res = await apiClient.get("/categories");
+        return res.data?.data && res.data.data.length > 0 ? res.data.data : DEMO_CATEGORIES;
+      } catch {
+        return DEMO_CATEGORIES;
+      }
+    },
+  });
+
+  // Filters State
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [maxPrice, setMaxPrice] = useState<number>(300);
   const [selectedBrand, setSelectedBrand] = useState("");
-
-  const fetchCatalogData = async () => {
-    setIsLoading(true);
-    try {
-      const [gearRes, catRes] = await Promise.allSettled([
-        apiClient.get("/gear"),
-        apiClient.get("/categories"),
-      ]);
-
-      let fetchedGear: GearItem[] = [];
-      let fetchedCats: Category[] = [];
-
-      if (gearRes.status === "fulfilled" && gearRes.value.data?.data) {
-        fetchedGear = gearRes.value.data.data;
-      }
-      if (catRes.status === "fulfilled" && catRes.value.data?.data) {
-        fetchedCats = catRes.value.data.data;
-      }
-
-      setGearList(fetchedGear.length > 0 ? fetchedGear : DEMO_GEAR);
-      setCategories(fetchedCats.length > 0 ? fetchedCats : DEMO_CATEGORIES);
-    } catch (err) {
-      console.warn("Using demo data due to API status:", err);
-      setGearList(DEMO_GEAR);
-      setCategories(DEMO_CATEGORIES);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchCatalogData();
-  }, []);
 
   const brandsList = useMemo(() => {
     const brands = new Set<string>();
@@ -309,7 +292,7 @@ export default function HomePage() {
           </aside>
 
           <main className="lg:col-span-3">
-            <GearGrid gearItems={filteredGear} isLoading={isLoading} />
+            <GearGrid gearItems={filteredGear} isLoading={isGearLoading} />
           </main>
         </div>
       </section>

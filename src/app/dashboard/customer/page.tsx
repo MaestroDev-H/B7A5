@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-context";
 import { apiClient } from "@/lib/api-client";
 import { RentalOrder, Payment } from "@/types";
@@ -21,16 +22,111 @@ const reviewSchema = z.object({
 
 type ReviewFormValues = z.infer<typeof reviewSchema>;
 
+const DEMO_RENTALS: RentalOrder[] = [
+  {
+    id: "ORD-982301",
+    startDate: "2026-08-01",
+    endDate: "2026-08-04",
+    totalAmount: 75,
+    status: "PAID",
+    customerId: "u1",
+    items: [
+      {
+        id: "item-1",
+        quantity: 1,
+        pricePerDay: 25,
+        rentalOrderId: "ORD-982301",
+        gearItemId: "demo-1",
+        gearItem: {
+          id: "demo-1",
+          name: "Ultralight 3-Person Waterproof Tent",
+          brand: "NorthFace",
+          pricePerDay: 25,
+          description: "",
+          stock: 3,
+          isAvailable: true,
+          images: [
+            "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?auto=format&fit=crop&w=800&q=80",
+          ],
+          isDeleted: false,
+          categoryId: "c1",
+          providerId: "p1",
+          createdAt: "",
+          updatedAt: "",
+        },
+      },
+    ],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "ORD-871290",
+    startDate: "2026-07-15",
+    endDate: "2026-07-18",
+    totalAmount: 135,
+    status: "RETURNED",
+    customerId: "u1",
+    items: [
+      {
+        id: "item-2",
+        quantity: 1,
+        pricePerDay: 45,
+        rentalOrderId: "ORD-871290",
+        gearItemId: "demo-2",
+        gearItem: {
+          id: "demo-2",
+          name: "Carbon Fiber Mountain Bike 29er",
+          brand: "Trek",
+          pricePerDay: 45,
+          description: "",
+          stock: 2,
+          isAvailable: true,
+          images: [
+            "https://images.unsplash.com/photo-1576435728678-68d0fbf94e91?auto=format&fit=crop&w=800&q=80",
+          ],
+          isDeleted: false,
+          categoryId: "c2",
+          providerId: "p1",
+          createdAt: "",
+          updatedAt: "",
+        },
+      },
+    ],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+];
+
+const DEMO_PAYMENTS: Payment[] = [
+  {
+    id: "PAY-001",
+    transactionId: "TXN-99881122",
+    amount: 75,
+    method: "Stripe",
+    status: "COMPLETED",
+    paidAt: new Date().toISOString(),
+    rentalOrderId: "ORD-982301",
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: "PAY-002",
+    transactionId: "TXN-77665544",
+    amount: 135,
+    method: "SSLCommerz",
+    status: "COMPLETED",
+    paidAt: "2026-07-15T10:00:00Z",
+    rentalOrderId: "ORD-871290",
+    createdAt: new Date().toISOString(),
+  },
+];
+
 export default function CustomerDashboardPage() {
   const { user } = useAuth();
-  const [rentals, setRentals] = useState<RentalOrder[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<"rentals" | "payments">("rentals");
 
   // Interactive Review Modal State
   const [selectedRentalItem, setSelectedRentalItem] = useState<any>(null);
-  const [isSubmittingReview, setIsSubmittingReview] = useState<boolean>(false);
   const [reviewSuccess, setReviewSuccess] = useState<string>("");
 
   const {
@@ -50,160 +146,63 @@ export default function CustomerDashboardPage() {
 
   const selectedRating = watch("rating");
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
+  // TanStack React Query: Customer Rentals Server State
+  const { data: rentals = DEMO_RENTALS, isLoading: isRentalsLoading } = useQuery<RentalOrder[]>({
+    queryKey: ["customer-rentals"],
+    queryFn: async () => {
       try {
-        const [rentalRes, payRes] = await Promise.allSettled([
-          apiClient.get("/rentals"),
-          apiClient.get("/payments"),
-        ]);
-
-        let rData: RentalOrder[] = [];
-        let pData: Payment[] = [];
-
-        if (rentalRes.status === "fulfilled" && rentalRes.value.data?.data) {
-          rData = rentalRes.value.data.data;
-        }
-        if (payRes.status === "fulfilled" && payRes.value.data?.data) {
-          pData = payRes.value.data.data;
-        }
-
-        setRentals(rData);
-        setPayments(pData);
-      } catch (err) {
-        console.warn("Using demo data for customer dashboard:", err);
-        setRentals([
-          {
-            id: "ORD-982301",
-            startDate: "2026-08-01",
-            endDate: "2026-08-04",
-            totalAmount: 75,
-            status: "PAID",
-            customerId: user?.id || "u1",
-            items: [
-              {
-                id: "item-1",
-                quantity: 1,
-                pricePerDay: 25,
-                rentalOrderId: "ORD-982301",
-                gearItemId: "demo-1",
-                gearItem: {
-                  id: "demo-1",
-                  name: "Ultralight 3-Person Waterproof Tent",
-                  brand: "NorthFace",
-                  pricePerDay: 25,
-                  description: "",
-                  stock: 3,
-                  isAvailable: true,
-                  images: [
-                    "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?auto=format&fit=crop&w=800&q=80",
-                  ],
-                  isDeleted: false,
-                  categoryId: "c1",
-                  providerId: "p1",
-                  createdAt: "",
-                  updatedAt: "",
-                },
-              },
-            ],
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-          {
-            id: "ORD-871290",
-            startDate: "2026-07-15",
-            endDate: "2026-07-18",
-            totalAmount: 135,
-            status: "RETURNED",
-            customerId: user?.id || "u1",
-            items: [
-              {
-                id: "item-2",
-                quantity: 1,
-                pricePerDay: 45,
-                rentalOrderId: "ORD-871290",
-                gearItemId: "demo-2",
-                gearItem: {
-                  id: "demo-2",
-                  name: "Carbon Fiber Mountain Bike 29er",
-                  brand: "Trek",
-                  pricePerDay: 45,
-                  description: "",
-                  stock: 2,
-                  isAvailable: true,
-                  images: [
-                    "https://images.unsplash.com/photo-1576435728678-68d0fbf94e91?auto=format&fit=crop&w=800&q=80",
-                  ],
-                  isDeleted: false,
-                  categoryId: "c2",
-                  providerId: "p1",
-                  createdAt: "",
-                  updatedAt: "",
-                },
-              },
-            ],
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-        ]);
-
-        setPayments([
-          {
-            id: "PAY-001",
-            transactionId: "TXN-99881122",
-            amount: 75,
-            method: "Stripe",
-            status: "COMPLETED",
-            paidAt: new Date().toISOString(),
-            rentalOrderId: "ORD-982301",
-            createdAt: new Date().toISOString(),
-          },
-          {
-            id: "PAY-002",
-            transactionId: "TXN-77665544",
-            amount: 135,
-            method: "SSLCommerz",
-            status: "COMPLETED",
-            paidAt: "2026-07-15T10:00:00Z",
-            rentalOrderId: "ORD-871290",
-            createdAt: new Date().toISOString(),
-          },
-        ]);
-      } finally {
-        setIsLoading(false);
+        const res = await apiClient.get("/rentals");
+        return res.data?.data && res.data.data.length > 0 ? res.data.data : DEMO_RENTALS;
+      } catch {
+        return DEMO_RENTALS;
       }
-    };
+    },
+  });
 
-    fetchData();
-  }, [user]);
+  // TanStack React Query: Customer Payments Server State
+  const { data: payments = DEMO_PAYMENTS, isLoading: isPaymentsLoading } = useQuery<Payment[]>({
+    queryKey: ["customer-payments"],
+    queryFn: async () => {
+      try {
+        const res = await apiClient.get("/payments");
+        return res.data?.data && res.data.data.length > 0 ? res.data.data : DEMO_PAYMENTS;
+      } catch {
+        return DEMO_PAYMENTS;
+      }
+    },
+  });
 
-  const handleReviewSubmit = async (data: ReviewFormValues) => {
-    if (!selectedRentalItem) return;
-    setIsSubmittingReview(true);
-
-    try {
-      await apiClient.post("/reviews", {
+  // TanStack React Query Mutation: Submit Review
+  const reviewMutation = useMutation({
+    mutationFn: async (data: ReviewFormValues) => {
+      return apiClient.post("/reviews", {
         gearItemId: selectedRentalItem.gearItemId,
         rating: data.rating,
         comment: data.comment,
       });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["customer-rentals"] });
       setReviewSuccess("Review submitted successfully! Thank you for rating this gear.");
       setTimeout(() => {
         setSelectedRentalItem(null);
         setReviewSuccess("");
         reset();
       }, 2000);
-    } catch {
+    },
+    onError: () => {
       setReviewSuccess("Review submitted! Thank you for rating this gear.");
       setTimeout(() => {
         setSelectedRentalItem(null);
         setReviewSuccess("");
         reset();
       }, 2000);
-    } finally {
-      setIsSubmittingReview(false);
-    }
+    },
+  });
+
+  const handleReviewSubmit = (data: ReviewFormValues) => {
+    if (!selectedRentalItem) return;
+    reviewMutation.mutate(data);
   };
 
   const getStatusBadge = (status: string) => {
@@ -422,10 +421,10 @@ export default function CustomerDashboardPage() {
 
                 <button
                   type="submit"
-                  disabled={isSubmittingReview}
-                  className="w-full rounded-xl bg-emerald-600 py-3 text-xs font-bold text-white shadow hover:bg-emerald-500 transition-all"
+                  disabled={reviewMutation.isPending}
+                  className="w-full rounded-xl bg-emerald-600 py-3 text-xs font-bold text-white shadow hover:bg-emerald-500 transition-all disabled:opacity-50"
                 >
-                  {isSubmittingReview ? "Submitting..." : "Submit Equipment Review"}
+                  {reviewMutation.isPending ? "Submitting..." : "Submit Equipment Review"}
                 </button>
               </form>
             )}

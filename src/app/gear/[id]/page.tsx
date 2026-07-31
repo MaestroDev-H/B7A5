@@ -4,8 +4,9 @@ import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
-import { GearItem, Review } from "@/types";
+import { GearItem } from "@/types";
 import { useAuth } from "@/context/auth-context";
 import {
   Star,
@@ -16,8 +17,6 @@ import {
   User as UserIcon,
   ArrowLeft,
   ShoppingBag,
-  Clock,
-  Sparkles,
 } from "lucide-react";
 
 export default function GearDetailsPage() {
@@ -25,9 +24,6 @@ export default function GearDetailsPage() {
   const router = useRouter();
   const { user } = useAuth();
   const gearId = params?.id as string;
-
-  const [gear, setGear] = useState<GearItem | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // Rental date selection state
   const [startDate, setStartDate] = useState<string>("");
@@ -45,22 +41,16 @@ export default function GearDetailsPage() {
     setEndDate(threeDaysLater.toISOString().split("T")[0]);
   }, []);
 
-  useEffect(() => {
-    if (!gearId) return;
-
-    const fetchDetails = async () => {
-      setIsLoading(true);
+  // TanStack React Query for Single Gear Item Server State
+  const { data: gear, isLoading } = useQuery<GearItem | null>({
+    queryKey: ["gear-detail", gearId],
+    queryFn: async () => {
+      if (!gearId) return null;
       try {
         const res = await apiClient.get(`/gear/${gearId}`);
-        if (res.data?.data) {
-          setGear(res.data.data);
-          if (res.data.data.images && res.data.data.images.length > 0) {
-            setSelectedImage(res.data.data.images[0]);
-          }
-        }
-      } catch (err) {
-        console.warn("Using fallback data for gear detail:", err);
-        const demo: GearItem = {
+        return res.data?.data || null;
+      } catch {
+        return {
           id: gearId,
           name: "Ultralight 3-Person Waterproof Tent",
           description:
@@ -71,37 +61,36 @@ export default function GearDetailsPage() {
           isAvailable: true,
           images: [
             "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?auto=format&fit=crop&w=800&q=80",
-            "https://images.unsplash.com/photo-1510312305653-8ed496efae75?auto=format&fit=crop&w=800&q=80",
           ],
           isDeleted: false,
           categoryId: "c1",
           category: { id: "c1", name: "Camping & Hiking" },
           providerId: "p1",
-          provider: {
-            id: "p1",
-            name: "Summit Outfitters Shop",
-            email: "provider@summit.com",
-            role: "PROVIDER",
-            status: "ACTIVE",
-            createdAt: "",
-            updatedAt: "",
-          },
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           avgRating: 4.9,
+          reviews: [
+            {
+              id: "r1",
+              rating: 5,
+              comment: "Amazing tent! Kept us dry during heavy rain in the mountains.",
+              createdAt: "2026-07-20",
+              updatedAt: "",
+              gearItemId: gearId,
+              customerId: "c1",
+              customer: { id: "c1", name: "Alex Rover", email: "", role: "CUSTOMER", status: "ACTIVE", createdAt: "", updatedAt: "" },
+            },
+          ],
         };
-        setGear(demo);
-        setSelectedImage(demo.images[0]);
-      } finally {
-        setIsLoading(false);
       }
-    };
+    },
+    enabled: !!gearId,
+  });
 
-    fetchDetails();
-  }, [gearId]);
+  const mainImage = selectedImage || gear?.images?.[0] || "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4";
 
-  // Calculate rental duration in days cleanly
-  const calculateDays = () => {
+  // Calculate rental duration & price
+  const calculateTotalDays = () => {
     if (!startDate || !endDate) return 1;
     const start = new Date(startDate);
     const end = new Date(endDate);
@@ -110,16 +99,16 @@ export default function GearDetailsPage() {
     return diffDays > 0 ? diffDays : 1;
   };
 
-  const totalDays = calculateDays();
-  const totalPrice = gear ? gear.pricePerDay * totalDays * quantity : 0;
+  const totalDays = calculateTotalDays();
+  const totalPrice = (gear?.pricePerDay || 0) * totalDays * quantity;
 
-  const handleBookingRedirect = () => {
+  const handleProceedToCheckout = () => {
     if (!user) {
       router.push(`/login?from=/gear/${gearId}`);
       return;
     }
 
-    const bookingDetails = {
+    const checkoutDraft = {
       gearItem: gear,
       startDate,
       endDate,
@@ -127,22 +116,16 @@ export default function GearDetailsPage() {
       quantity,
       totalPrice,
     };
-    sessionStorage.setItem("gearup_checkout_draft", JSON.stringify(bookingDetails));
+
+    sessionStorage.setItem("gearup_checkout_draft", JSON.stringify(checkoutDraft));
     router.push("/checkout");
   };
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 space-y-8 animate-pulse">
-        <div className="h-6 w-32 bg-zinc-200 dark:bg-zinc-800 rounded" />
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          <div className="h-96 bg-zinc-200 dark:bg-zinc-800 rounded-2xl" />
-          <div className="space-y-4">
-            <div className="h-8 w-3/4 bg-zinc-200 dark:bg-zinc-800 rounded" />
-            <div className="h-4 w-1/2 bg-zinc-200 dark:bg-zinc-800 rounded" />
-            <div className="h-32 bg-zinc-200 dark:bg-zinc-800 rounded-2xl" />
-          </div>
-        </div>
+      <div className="mx-auto max-w-7xl px-4 py-16 text-center space-y-4">
+        <div className="animate-spin h-10 w-10 border-4 border-emerald-500 border-t-transparent rounded-full mx-auto" />
+        <p className="text-xs font-bold text-zinc-500">Loading equipment details...</p>
       </div>
     );
   }
@@ -151,8 +134,8 @@ export default function GearDetailsPage() {
     return (
       <div className="mx-auto max-w-7xl px-4 py-20 text-center space-y-4">
         <AlertCircle className="h-12 w-12 text-rose-500 mx-auto" />
-        <h2 className="text-2xl font-bold">Gear Item Not Found</h2>
-        <Link href="/" className="inline-block text-xs text-emerald-600 font-bold underline">
+        <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">Equipment Not Found</h2>
+        <Link href="/" className="text-xs font-bold text-emerald-600 hover:underline">
           Return to Equipment Catalog
         </Link>
       </div>
@@ -161,6 +144,7 @@ export default function GearDetailsPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 space-y-12">
+      {/* Back Button */}
       <Link
         href="/"
         className="inline-flex items-center gap-2 text-xs font-bold text-zinc-500 hover:text-emerald-600 transition-colors"
@@ -169,186 +153,157 @@ export default function GearDetailsPage() {
       </Link>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-        <div className="lg:col-span-7 space-y-8">
-          <div className="space-y-3">
-            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm">
-              <Image
-                src={selectedImage || gear.images[0]}
-                alt={gear.name}
-                fill
-                priority
-                className="object-cover"
-              />
-              <span className="absolute top-4 left-4 rounded-full bg-emerald-600 px-3 py-1 text-xs font-extrabold text-white shadow-md">
-                {gear.category?.name || "Equipment"}
-              </span>
-            </div>
-
-            {gear.images && gear.images.length > 1 && (
-              <div className="flex gap-3">
-                {gear.images.map((img, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setSelectedImage(img)}
-                    className={`relative h-20 w-20 overflow-hidden rounded-xl border-2 transition-all ${
-                      selectedImage === img
-                        ? "border-emerald-600 scale-105 shadow-md"
-                        : "border-transparent opacity-70 hover:opacity-100"
-                    }`}
-                  >
-                    <Image src={img} alt="Thumbnail" fill className="object-cover" />
-                  </button>
-                ))}
-              </div>
-            )}
+        {/* Left: Image Gallery */}
+        <div className="lg:col-span-7 space-y-4">
+          <div className="relative h-96 sm:h-[450px] w-full overflow-hidden rounded-3xl border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm">
+            <Image
+              src={mainImage}
+              alt={gear.name}
+              fill
+              className="object-cover transition-all"
+              priority
+            />
           </div>
 
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <span className="rounded-lg bg-zinc-100 px-3 py-1 text-xs font-extrabold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                Brand: {gear.brand}
-              </span>
-              <span className="flex items-center gap-1 text-xs font-extrabold text-amber-500">
-                <Star className="h-4 w-4 fill-amber-400" />
-                {gear.avgRating ? gear.avgRating.toFixed(1) : "4.9"} (12 reviews)
-              </span>
+          {gear.images && gear.images.length > 1 && (
+            <div className="flex gap-4 overflow-x-auto pb-2">
+              {gear.images.map((img, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setSelectedImage(img)}
+                  className={`relative h-20 w-24 shrink-0 overflow-hidden rounded-2xl border-2 transition-all ${
+                    mainImage === img
+                      ? "border-emerald-600 scale-105 shadow-md"
+                      : "border-zinc-200 dark:border-zinc-800 opacity-70 hover:opacity-100"
+                  }`}
+                >
+                  <Image src={img} alt={`Thumbnail ${idx}`} fill className="object-cover" />
+                </button>
+              ))}
             </div>
+          )}
 
-            <h1 className="text-3xl font-extrabold text-zinc-900 dark:text-white">
-              {gear.name}
-            </h1>
-          </div>
-
-          <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900 space-y-4 shadow-sm">
-            <h3 className="text-xs font-extrabold text-zinc-900 dark:text-white uppercase tracking-wider">
-              Product Overview & Specifications
+          {/* Description & Technical Specs */}
+          <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 space-y-4">
+            <h3 className="text-lg font-extrabold text-zinc-900 dark:text-white">
+              Equipment Description & Features
             </h3>
             <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed">
               {gear.description}
             </p>
 
-            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-zinc-100 dark:border-zinc-800 text-xs">
+            <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800 grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs">
               <div>
-                <span className="text-zinc-400 font-medium">Availability Status:</span>
-                <p className="font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
-                  {gear.isAvailable ? "In Stock & Ready" : "Currently Rented Out"}
-                </p>
+                <span className="text-zinc-400 font-medium">Brand</span>
+                <p className="font-bold text-zinc-900 dark:text-white">{gear.brand}</p>
               </div>
               <div>
-                <span className="text-zinc-400 font-medium">Available Units:</span>
-                <p className="font-bold text-zinc-900 dark:text-white mt-0.5">
-                  {gear.stock} Units
+                <span className="text-zinc-400 font-medium">Category</span>
+                <p className="font-bold text-zinc-900 dark:text-white">{gear.category?.name || "General"}</p>
+              </div>
+              <div>
+                <span className="text-zinc-400 font-medium">Availability</span>
+                <p className="font-bold text-emerald-600 dark:text-emerald-400">
+                  {gear.stock} units in stock
                 </p>
               </div>
             </div>
-          </div>
-
-          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-6 dark:border-zinc-800 dark:bg-zinc-950 flex items-center justify-between shadow-sm">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-600 text-white font-extrabold text-lg">
-                <UserIcon className="h-6 w-6" />
-              </div>
-              <div>
-                <h4 className="text-sm font-bold text-zinc-900 dark:text-white">
-                  {gear.provider?.name || "Summit Outfitters Shop"}
-                </h4>
-                <p className="text-xs text-zinc-500">Verified Equipment Provider</p>
-              </div>
-            </div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-              <ShieldCheck className="h-4 w-4" /> Verified
-            </span>
           </div>
         </div>
 
-        {/* Right Column: Interactive Date Calculator & Booking Card */}
-        <div className="lg:col-span-5">
-          <div className="sticky top-24 rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900 space-y-6">
-            <div className="flex items-baseline justify-between border-b border-zinc-100 pb-4 dark:border-zinc-800">
-              <div>
-                <span className="text-3xl font-extrabold text-zinc-900 dark:text-white">
-                  ${gear.pricePerDay}
+        {/* Right: Booking Summary & Date Picker Sidebar */}
+        <div className="lg:col-span-5 space-y-6">
+          <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900 space-y-6">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-extrabold uppercase text-emerald-600 dark:text-emerald-400 tracking-wider">
+                  {gear.category?.name || "Equipment"}
                 </span>
-                <span className="text-xs text-zinc-400"> / day</span>
+                <div className="flex items-center gap-1 text-amber-500 font-bold text-xs">
+                  <Star className="h-4 w-4 fill-amber-400" />
+                  <span>{gear.avgRating || 4.9}</span>
+                </div>
               </div>
-              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                ★ Insured Booking
-              </span>
+
+              <h1 className="text-2xl font-extrabold text-zinc-900 dark:text-white mt-1">
+                {gear.name}
+              </h1>
             </div>
 
+            <div className="flex items-baseline gap-2 border-y border-zinc-100 py-4 dark:border-zinc-800">
+              <span className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400">
+                ${gear.pricePerDay}
+              </span>
+              <span className="text-xs font-semibold text-zinc-400">/ day</span>
+            </div>
+
+            {/* Date Picker Form */}
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-zinc-900 dark:text-white flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-emerald-500" /> Select Rental Period
+              </h4>
+
+              <div className="grid grid-cols-2 gap-3 text-xs">
                 <div>
-                  <label className="text-xs font-bold text-zinc-600 dark:text-zinc-400">
-                    Pickup Date
-                  </label>
+                  <label className="text-[11px] font-bold text-zinc-600 dark:text-zinc-400">Pickup Date</label>
                   <input
                     type="date"
                     value={startDate}
                     min={new Date().toISOString().split("T")[0]}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
+                    className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 font-bold text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white"
                   />
                 </div>
-
                 <div>
-                  <label className="text-xs font-bold text-zinc-600 dark:text-zinc-400">
-                    Return Date
-                  </label>
+                  <label className="text-[11px] font-bold text-zinc-600 dark:text-zinc-400">Return Date</label>
                   <input
                     type="date"
                     value={endDate}
-                    min={startDate || new Date().toISOString().split("T")[0]}
+                    min={startDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
+                    className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 font-bold text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-bold text-zinc-600 dark:text-zinc-400">
-                  Quantity Needed
-                </label>
+                <label className="text-[11px] font-bold text-zinc-600 dark:text-zinc-400">Quantity</label>
                 <select
                   value={quantity}
                   onChange={(e) => setQuantity(Number(e.target.value))}
-                  className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
+                  className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs font-bold text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white"
                 >
-                  {Array.from({ length: Math.min(gear.stock, 5) }).map((_, i) => (
+                  {Array.from({ length: gear.stock || 1 }).map((_, i) => (
                     <option key={i + 1} value={i + 1}>
-                      {i + 1} item{i > 0 ? "s" : ""}
+                      {i + 1} unit(s)
                     </option>
                   ))}
                 </select>
               </div>
             </div>
 
-            <div className="rounded-xl bg-zinc-50 p-4 dark:bg-zinc-950 space-y-2 text-xs">
-              <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
-                <span>
-                  ${gear.pricePerDay} × {totalDays} day{totalDays > 1 ? "s" : ""} × {quantity} unit(s)
-                </span>
-                <span className="font-bold text-zinc-900 dark:text-white">
-                  ${totalPrice}
-                </span>
+            {/* Price Summary Box */}
+            <div className="rounded-2xl bg-zinc-50 p-4 dark:bg-zinc-950 space-y-2 text-xs">
+              <div className="flex justify-between text-zinc-500">
+                <span>Duration</span>
+                <span className="font-bold text-zinc-900 dark:text-white">{totalDays} Days</span>
               </div>
-              <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
-                <span>Equipment Protection Plan</span>
-                <span className="font-bold text-emerald-600">INCLUDED</span>
+              <div className="flex justify-between text-zinc-500">
+                <span>Daily Rate (${gear.pricePerDay} × {quantity})</span>
+                <span className="font-bold text-zinc-900 dark:text-white">${gear.pricePerDay * quantity}/day</span>
               </div>
-              <div className="border-t border-zinc-200 pt-2 flex justify-between font-extrabold text-sm text-zinc-900 dark:text-white dark:border-zinc-800">
-                <span>Total Estimated</span>
+              <div className="flex justify-between border-t border-zinc-200 pt-2 text-sm font-extrabold text-zinc-900 dark:text-white dark:border-zinc-800">
+                <span>Total Calculated Rental</span>
                 <span className="text-emerald-600 dark:text-emerald-400">${totalPrice}</span>
               </div>
             </div>
 
             <button
-              onClick={handleBookingRedirect}
-              disabled={!gear.isAvailable || gear.stock === 0}
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3.5 text-xs sm:text-sm font-extrabold text-white shadow-lg shadow-emerald-600/30 hover:bg-emerald-500 disabled:opacity-50 transition-all"
+              onClick={handleProceedToCheckout}
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3.5 text-xs sm:text-sm font-extrabold text-white shadow-lg shadow-emerald-600/30 hover:bg-emerald-500 transition-all"
             >
               <ShoppingBag className="h-4 w-4" />
-              {user ? "Proceed to Checkout" : "Sign In to Rent Equipment"}
+              Book Now & Proceed to Checkout
             </button>
           </div>
         </div>

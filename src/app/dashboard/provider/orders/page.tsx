@@ -1,87 +1,86 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import Link from "next/link";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import { RentalOrder, RentalStatus } from "@/types";
-import { ArrowLeft, ShoppingBag, CheckCircle, Truck, RotateCcw, XCircle, Clock } from "lucide-react";
+import { ArrowLeft, CheckCircle, Truck, RotateCcw, XCircle } from "lucide-react";
+
+const DEMO_PROVIDER_ORDERS: RentalOrder[] = [
+  {
+    id: "ORD-982301",
+    startDate: "2026-08-01",
+    endDate: "2026-08-04",
+    totalAmount: 75,
+    status: "PLACED",
+    customerId: "cust-1",
+    customer: {
+      id: "cust-1",
+      name: "Alice Johnson",
+      email: "alice@example.com",
+      role: "CUSTOMER",
+      status: "ACTIVE",
+      createdAt: "",
+      updatedAt: "",
+    },
+    items: [
+      {
+        id: "i1",
+        quantity: 1,
+        pricePerDay: 25,
+        rentalOrderId: "ORD-982301",
+        gearItemId: "prov-1",
+        gearItem: {
+          id: "prov-1",
+          name: "Ultralight 3-Person Waterproof Tent",
+          brand: "NorthFace",
+          pricePerDay: 25,
+          description: "",
+          stock: 3,
+          isAvailable: true,
+          images: [],
+          isDeleted: false,
+          categoryId: "c1",
+          providerId: "p1",
+          createdAt: "",
+          updatedAt: "",
+        },
+      },
+    ],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+];
 
 export default function ProviderOrdersPage() {
-  const [orders, setOrders] = useState<RentalOrder[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    const fetchOrders = async () => {
-      setIsLoading(true);
+  // TanStack React Query: Fetch Incoming Provider Orders
+  const { data: orders = DEMO_PROVIDER_ORDERS, isLoading } = useQuery<RentalOrder[]>({
+    queryKey: ["provider-orders"],
+    queryFn: async () => {
       try {
         const res = await apiClient.get("/provider/orders");
-        if (res.data?.data) {
-          setOrders(res.data.data);
-        }
-      } catch (err) {
-        console.warn("Using demo provider orders:", err);
-        setOrders([
-          {
-            id: "ORD-982301",
-            startDate: "2026-08-01",
-            endDate: "2026-08-04",
-            totalAmount: 75,
-            status: "PLACED",
-            customerId: "cust-1",
-            customer: {
-              id: "cust-1",
-              name: "Alice Johnson",
-              email: "alice@example.com",
-              role: "CUSTOMER",
-              status: "ACTIVE",
-              createdAt: "",
-              updatedAt: "",
-            },
-            items: [
-              {
-                id: "i1",
-                quantity: 1,
-                pricePerDay: 25,
-                rentalOrderId: "ORD-982301",
-                gearItemId: "prov-1",
-                gearItem: {
-                  id: "prov-1",
-                  name: "Ultralight 3-Person Waterproof Tent",
-                  brand: "NorthFace",
-                  pricePerDay: 25,
-                  description: "",
-                  stock: 3,
-                  isAvailable: true,
-                  images: [],
-                  isDeleted: false,
-                  categoryId: "c1",
-                  providerId: "p1",
-                  createdAt: "",
-                  updatedAt: "",
-                },
-              },
-            ],
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-        ]);
-      } finally {
-        setIsLoading(false);
+        return res.data?.data && res.data.data.length > 0 ? res.data.data : DEMO_PROVIDER_ORDERS;
+      } catch {
+        return DEMO_PROVIDER_ORDERS;
       }
-    };
+    },
+  });
 
-    fetchOrders();
-  }, []);
+  // TanStack React Query Mutation: Update Order Status
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ orderId, newStatus }: { orderId: string; newStatus: RentalStatus }) => {
+      return apiClient.patch(`/provider/orders/${orderId}`, { status: newStatus });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["provider-orders"] });
+    },
+  });
 
-  const updateOrderStatus = async (orderId: string, newStatus: RentalStatus) => {
-    try {
-      await apiClient.patch(`/provider/orders/${orderId}`, { status: newStatus });
-    } catch {
-      // Local state fallback
-    }
-    setOrders(
-      orders.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
-    );
+  const updateOrderStatus = (orderId: string, newStatus: RentalStatus) => {
+    updateStatusMutation.mutate({ orderId, newStatus });
   };
 
   return (
@@ -148,7 +147,8 @@ export default function ProviderOrdersPage() {
                 {order.status === "PLACED" && (
                   <button
                     onClick={() => updateOrderStatus(order.id, "CONFIRMED")}
-                    className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow hover:bg-blue-500 transition-all"
+                    disabled={updateStatusMutation.isPending}
+                    className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow hover:bg-blue-500 transition-all disabled:opacity-50"
                   >
                     <CheckCircle className="h-4 w-4" /> Confirm Reservation
                   </button>
@@ -156,7 +156,8 @@ export default function ProviderOrdersPage() {
                 {(order.status === "CONFIRMED" || order.status === "PAID") && (
                   <button
                     onClick={() => updateOrderStatus(order.id, "PICKED_UP")}
-                    className="flex items-center gap-1.5 rounded-xl bg-purple-600 px-4 py-2 text-xs font-bold text-white shadow hover:bg-purple-500 transition-all"
+                    disabled={updateStatusMutation.isPending}
+                    className="flex items-center gap-1.5 rounded-xl bg-purple-600 px-4 py-2 text-xs font-bold text-white shadow hover:bg-purple-500 transition-all disabled:opacity-50"
                   >
                     <Truck className="h-4 w-4" /> Mark Picked Up
                   </button>
@@ -164,7 +165,8 @@ export default function ProviderOrdersPage() {
                 {order.status === "PICKED_UP" && (
                   <button
                     onClick={() => updateOrderStatus(order.id, "RETURNED")}
-                    className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow hover:bg-emerald-500 transition-all"
+                    disabled={updateStatusMutation.isPending}
+                    className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow hover:bg-emerald-500 transition-all disabled:opacity-50"
                   >
                     <RotateCcw className="h-4 w-4" /> Mark Returned & Complete
                   </button>
@@ -172,7 +174,8 @@ export default function ProviderOrdersPage() {
                 {order.status !== "CANCELLED" && order.status !== "RETURNED" && (
                   <button
                     onClick={() => updateOrderStatus(order.id, "CANCELLED")}
-                    className="flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-xs font-bold text-rose-600 hover:bg-rose-100 transition-all"
+                    disabled={updateStatusMutation.isPending}
+                    className="flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-xs font-bold text-rose-600 hover:bg-rose-100 transition-all disabled:opacity-50"
                   >
                     <XCircle className="h-4 w-4" /> Cancel Order
                   </button>

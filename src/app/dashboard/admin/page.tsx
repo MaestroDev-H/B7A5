@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-context";
 import { apiClient } from "@/lib/api-client";
 import { User, Category, UserStatus } from "@/types";
@@ -22,13 +23,48 @@ const categorySchema = z.object({
 
 type CategoryFormValues = z.infer<typeof categorySchema>;
 
+const DEMO_USERS: User[] = [
+  {
+    id: "u1",
+    name: "John Customer",
+    email: "customer@example.com",
+    role: "CUSTOMER",
+    status: "ACTIVE",
+    createdAt: "2026-07-01",
+    updatedAt: "",
+  },
+  {
+    id: "u2",
+    name: "Summit Rental Store",
+    email: "provider@summit.com",
+    role: "PROVIDER",
+    status: "ACTIVE",
+    createdAt: "2026-07-05",
+    updatedAt: "",
+  },
+  {
+    id: "u3",
+    name: "Flagged User Account",
+    email: "spam@example.com",
+    role: "CUSTOMER",
+    status: "SUSPENDED",
+    createdAt: "2026-07-10",
+    updatedAt: "",
+  },
+];
+
+const DEMO_ADMIN_CATEGORIES: Category[] = [
+  { id: "1", name: "Camping & Hiking" },
+  { id: "2", name: "Cycling & Bikes" },
+  { id: "3", name: "Water Sports" },
+  { id: "4", name: "Winter Sports" },
+  { id: "5", name: "Fitness & Gym" },
+];
+
 export default function AdminDashboardPage() {
   const { user: currentAdmin } = useAuth();
-  const [users, setUsers] = useState<User[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<"users" | "categories">("users");
-
-  // Category modal
   const [isCatModalOpen, setIsCatModalOpen] = useState(false);
 
   const {
@@ -43,90 +79,65 @@ export default function AdminDashboardPage() {
     },
   });
 
-  useEffect(() => {
-    const fetchAdminData = async () => {
+  // TanStack React Query: Fetch Admin Users Server State
+  const { data: users = DEMO_USERS } = useQuery<User[]>({
+    queryKey: ["admin-users"],
+    queryFn: async () => {
       try {
-        const [usersRes, catRes] = await Promise.allSettled([
-          apiClient.get("/admin/users"),
-          apiClient.get("/categories"),
-        ]);
-
-        if (usersRes.status === "fulfilled" && usersRes.value.data?.data) {
-          setUsers(usersRes.value.data.data);
-        }
-        if (catRes.status === "fulfilled" && catRes.value.data?.data) {
-          setCategories(catRes.value.data.data);
-        }
-      } catch (err) {
-        console.warn("Using demo admin data:", err);
-        setUsers([
-          {
-            id: "u1",
-            name: "John Customer",
-            email: "customer@example.com",
-            role: "CUSTOMER",
-            status: "ACTIVE",
-            createdAt: "2026-07-01",
-            updatedAt: "",
-          },
-          {
-            id: "u2",
-            name: "Summit Rental Store",
-            email: "provider@summit.com",
-            role: "PROVIDER",
-            status: "ACTIVE",
-            createdAt: "2026-07-05",
-            updatedAt: "",
-          },
-          {
-            id: "u3",
-            name: "Flagged User Account",
-            email: "spam@example.com",
-            role: "CUSTOMER",
-            status: "SUSPENDED",
-            createdAt: "2026-07-10",
-            updatedAt: "",
-          },
-        ]);
-        setCategories([
-          { id: "1", name: "Camping & Hiking" },
-          { id: "2", name: "Cycling & Bikes" },
-          { id: "3", name: "Water Sports" },
-          { id: "4", name: "Winter Sports" },
-          { id: "5", name: "Fitness & Gym" },
-        ]);
+        const res = await apiClient.get("/admin/users");
+        return res.data?.data && res.data.data.length > 0 ? res.data.data : DEMO_USERS;
+      } catch {
+        return DEMO_USERS;
       }
-    };
+    },
+  });
 
-    fetchAdminData();
-  }, []);
-
-  const toggleUserStatus = async (userId: string, currentStatus: UserStatus) => {
-    const nextStatus: UserStatus = currentStatus === "ACTIVE" ? "SUSPENDED" : "ACTIVE";
-    try {
-      await apiClient.patch(`/admin/users/${userId}`, { status: nextStatus });
-    } catch {
-      // Fallback
-    }
-    setUsers(
-      users.map((u) => (u.id === userId ? { ...u, status: nextStatus } : u))
-    );
-  };
-
-  const handleAddCategorySubmit = async (data: CategoryFormValues) => {
-    try {
-      const res = await apiClient.post("/categories", { name: data.name });
-      if (res.data?.data) {
-        setCategories([...categories, res.data.data]);
-      } else {
-        setCategories([...categories, { id: `cat-${Date.now()}`, name: data.name }]);
+  // TanStack React Query: Fetch Categories Server State
+  const { data: categories = DEMO_ADMIN_CATEGORIES } = useQuery<Category[]>({
+    queryKey: ["gear-categories"],
+    queryFn: async () => {
+      try {
+        const res = await apiClient.get("/categories");
+        return res.data?.data && res.data.data.length > 0 ? res.data.data : DEMO_ADMIN_CATEGORIES;
+      } catch {
+        return DEMO_ADMIN_CATEGORIES;
       }
-    } catch {
-      setCategories([...categories, { id: `cat-${Date.now()}`, name: data.name }]);
-    } finally {
+    },
+  });
+
+  // TanStack React Query Mutation: Toggle User Status
+  const toggleUserStatusMutation = useMutation({
+    mutationFn: async ({ userId, nextStatus }: { userId: string; nextStatus: UserStatus }) => {
+      return apiClient.patch(`/admin/users/${userId}`, { status: nextStatus });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    },
+  });
+
+  // TanStack React Query Mutation: Add Category
+  const addCategoryMutation = useMutation({
+    mutationFn: async (data: CategoryFormValues) => {
+      return apiClient.post("/categories", { name: data.name });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["gear-categories"] });
       reset();
       setIsCatModalOpen(false);
-    }
+    },
+    onError: () => {
+      reset();
+      setIsCatModalOpen(false);
+    },
+  });
+
+  const toggleUserStatus = (userId: string, currentStatus: UserStatus) => {
+    const nextStatus: UserStatus = currentStatus === "ACTIVE" ? "SUSPENDED" : "ACTIVE";
+    toggleUserStatusMutation.mutate({ userId, nextStatus });
+  };
+
+  const handleAddCategorySubmit = (data: CategoryFormValues) => {
+    addCategoryMutation.mutate(data);
   };
 
   return (
@@ -240,7 +251,8 @@ export default function AdminDashboardPage() {
                       {u.role !== "ADMIN" && (
                         <button
                           onClick={() => toggleUserStatus(u.id, u.status)}
-                          className={`inline-flex items-center gap-1 rounded-xl px-3.5 py-1.5 font-bold text-xs transition-colors ${
+                          disabled={toggleUserStatusMutation.isPending}
+                          className={`inline-flex items-center gap-1 rounded-xl px-3.5 py-1.5 font-bold text-xs transition-colors disabled:opacity-50 ${
                             u.status === "ACTIVE"
                               ? "bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400"
                               : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400"
@@ -320,9 +332,10 @@ export default function AdminDashboardPage() {
 
               <button
                 type="submit"
-                className="w-full rounded-xl bg-emerald-600 py-3 text-xs font-bold text-white shadow hover:bg-emerald-500 transition-all"
+                disabled={addCategoryMutation.isPending}
+                className="w-full rounded-xl bg-emerald-600 py-3 text-xs font-bold text-white shadow hover:bg-emerald-500 transition-all disabled:opacity-50"
               >
-                Create Category
+                {addCategoryMutation.isPending ? "Creating Category..." : "Create Category"}
               </button>
             </form>
           </div>
