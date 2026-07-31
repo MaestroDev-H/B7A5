@@ -21,8 +21,8 @@ const addGearSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   description: z.string().min(5, "Description must be at least 5 characters"),
   brand: z.string().min(1, "Brand is required"),
-  pricePerDay: z.coerce.number().min(1, "Price per day must be at least $1"),
-  stock: z.coerce.number().min(1, "Stock must be at least 1 unit"),
+  pricePerDay: z.number().min(1, "Price per day must be at least $1"),
+  stock: z.number().min(1, "Stock must be at least 1 unit"),
   categoryId: z.string().min(1, "Category is required"),
   imageUrl: z.string().optional(),
 });
@@ -336,7 +336,7 @@ export default function ProviderDashboardPage() {
                 <div>
                   <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Price per Day ($)</label>
                   <input
-                    {...register("pricePerDay")}
+                    {...register("pricePerDay", { valueAsNumber: true })}
                     type="number"
                     min={1}
                     className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
@@ -351,7 +351,7 @@ export default function ProviderDashboardPage() {
                 <div>
                   <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Stock Quantity</label>
                   <input
-                    {...register("stock")}
+                    {...register("stock", { valueAsNumber: true })}
                     type="number"
                     min={1}
                     className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
