@@ -83,23 +83,15 @@ export default function CheckoutPage() {
       const { clientSecret, payment } = paymentRes.data?.data || {};
       const transactionId = payment?.transactionId || `TXN-${Date.now()}`;
 
-      if (clientSecret) {
-        setPaymentData({
-          clientSecret,
-          transactionId,
-          rentalOrderId,
-        });
-      } else if (transactionId) {
-        // Confirm payment with backend & verify explicit response
-        const confirmRes = await apiClient.post("/payments/confirm", { transactionId });
-        if (confirmRes.data?.success || confirmRes.status === 200 || confirmRes.status === 201) {
-          handlePaymentSuccess(rentalOrderId, draft.totalPrice);
-        } else {
-          throw new Error("Payment session confirmation failed on server.");
-        }
-      } else {
-        throw new Error("Failed to initialize payment gateway session from server.");
+      if (!clientSecret) {
+        throw new Error("Failed to initialize Stripe payment session. Client secret was not provided by server.");
       }
+
+      setPaymentData({
+        clientSecret,
+        transactionId,
+        rentalOrderId,
+      });
     } catch (err: any) {
       setErrorMessage(err.response?.data?.message || err.message || "Failed to process rental order. Please try again.");
     } finally {
