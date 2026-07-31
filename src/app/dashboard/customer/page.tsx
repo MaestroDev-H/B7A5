@@ -147,28 +147,20 @@ export default function CustomerDashboardPage() {
   const selectedRating = watch("rating");
 
   // TanStack React Query: Customer Rentals Server State
-  const { data: rentals = DEMO_RENTALS, isLoading: isRentalsLoading } = useQuery<RentalOrder[]>({
+  const { data: rentals = [], isLoading: isRentalsLoading, isError: isRentalsError, error: rentalsError } = useQuery<RentalOrder[]>({
     queryKey: ["customer-rentals"],
     queryFn: async () => {
-      try {
-        const res = await apiClient.get("/rentals");
-        return res.data?.data && res.data.data.length > 0 ? res.data.data : DEMO_RENTALS;
-      } catch {
-        return DEMO_RENTALS;
-      }
+      const res = await apiClient.get("/rentals");
+      return res.data?.data || [];
     },
   });
 
   // TanStack React Query: Customer Payments Server State
-  const { data: payments = DEMO_PAYMENTS, isLoading: isPaymentsLoading } = useQuery<Payment[]>({
+  const { data: payments = [], isLoading: isPaymentsLoading, isError: isPaymentsError, error: paymentsError } = useQuery<Payment[]>({
     queryKey: ["customer-payments"],
     queryFn: async () => {
-      try {
-        const res = await apiClient.get("/payments");
-        return res.data?.data && res.data.data.length > 0 ? res.data.data : DEMO_PAYMENTS;
-      } catch {
-        return DEMO_PAYMENTS;
-      }
+      const res = await apiClient.get("/payments");
+      return res.data?.data || [];
     },
   });
 

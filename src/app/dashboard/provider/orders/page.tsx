@@ -57,15 +57,11 @@ export default function ProviderOrdersPage() {
   const queryClient = useQueryClient();
 
   // TanStack React Query: Fetch Incoming Provider Orders
-  const { data: orders = DEMO_PROVIDER_ORDERS, isLoading } = useQuery<RentalOrder[]>({
+  const { data: orders = [], isLoading, isError, error } = useQuery<RentalOrder[]>({
     queryKey: ["provider-orders"],
     queryFn: async () => {
-      try {
-        const res = await apiClient.get("/provider/orders");
-        return res.data?.data && res.data.data.length > 0 ? res.data.data : DEMO_PROVIDER_ORDERS;
-      } catch {
-        return DEMO_PROVIDER_ORDERS;
-      }
+      const res = await apiClient.get("/provider/orders");
+      return res.data?.data || [];
     },
   });
 

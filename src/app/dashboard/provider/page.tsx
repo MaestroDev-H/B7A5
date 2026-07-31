@@ -14,10 +14,12 @@ import {
   Package,
   DollarSign,
   Trash2,
+  Pencil,
   ShoppingBag,
+  AlertCircle,
 } from "lucide-react";
 
-const addGearSchema = z.object({
+const gearFormSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   description: z.string().min(5, "Description must be at least 5 characters"),
   brand: z.string().min(1, "Brand is required"),
@@ -27,59 +29,17 @@ const addGearSchema = z.object({
   imageUrl: z.string().optional(),
 });
 
-type AddGearFormValues = z.infer<typeof addGearSchema>;
-
-const DEMO_PROVIDER_INVENTORY: GearItem[] = [
-  {
-    id: "prov-1",
-    name: "Ultralight 3-Person Waterproof Tent",
-    description: "Expedition grade double vestibule tent",
-    brand: "NorthFace",
-    pricePerDay: 25,
-    stock: 4,
-    isAvailable: true,
-    images: [
-      "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?auto=format&fit=crop&w=800&q=80",
-    ],
-    isDeleted: false,
-    categoryId: "c1",
-    category: { id: "c1", name: "Camping & Hiking" },
-    providerId: "p1",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "prov-2",
-    name: "Carbon Fiber Mountain Bike 29er",
-    description: "Full suspension hydraulic disc mountain bike",
-    brand: "Trek",
-    pricePerDay: 45,
-    stock: 2,
-    isAvailable: true,
-    images: [
-      "https://images.unsplash.com/photo-1576435728678-68d0fbf94e91?auto=format&fit=crop&w=800&q=80",
-    ],
-    isDeleted: false,
-    categoryId: "c2",
-    category: { id: "c2", name: "Cycling & Bikes" },
-    providerId: "p1",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
+type GearFormValues = z.infer<typeof gearFormSchema>;
 
 export default function ProviderDashboardPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingGear, setEditingGear] = useState<GearItem | null>(null);
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<AddGearFormValues>({
-    resolver: zodResolver(addGearSchema),
+  // Form for Adding New Gear
+  const addForm = useForm<GearFormValues>({
+    resolver: zodResolver(gearFormSchema),
     defaultValues: {
       name: "",
       description: "",
@@ -91,16 +51,22 @@ export default function ProviderDashboardPage() {
     },
   });
 
-  // TanStack React Query: Inventory Server State
-  const { data: inventory = DEMO_PROVIDER_INVENTORY, isLoading } = useQuery<GearItem[]>({
+  // Form for Editing Existing Gear
+  const editForm = useForm<GearFormValues>({
+    resolver: zodResolver(gearFormSchema),
+  });
+
+  // TanStack React Query: Inventory Server State (Strictly fetching real API data without demo fallbacks)
+  const {
+    data: inventory = [],
+    isLoading,
+    isError,
+    error,
+  } = useQuery<GearItem[]>({
     queryKey: ["provider-inventory"],
     queryFn: async () => {
-      try {
-        const res = await apiClient.get("/gear");
-        return res.data?.data && res.data.data.length > 0 ? res.data.data : DEMO_PROVIDER_INVENTORY;
-      } catch {
-        return DEMO_PROVIDER_INVENTORY;
-      }
+      const res = await apiClient.get("/gear");
+      return res.data?.data || [];
     },
   });
 
@@ -108,23 +74,15 @@ export default function ProviderDashboardPage() {
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ["gear-categories"],
     queryFn: async () => {
-      try {
-        const res = await apiClient.get("/categories");
-        return res.data?.data || [];
-      } catch {
-        return [
-          { id: "c1", name: "Camping & Hiking" },
-          { id: "c2", name: "Cycling & Bikes" },
-          { id: "c3", name: "Water Sports" },
-        ];
-      }
+      const res = await apiClient.get("/categories");
+      return res.data?.data || [];
     },
   });
 
-  // TanStack React Query Mutation: Add Gear
+  // TanStack React Query Mutation: Add Gear (POST /provider/gear)
   const addGearMutation = useMutation({
-    mutationFn: async (data: AddGearFormValues) => {
-      const selectedCatId = data.categoryId || categories[0]?.id || "c1";
+    mutationFn: async (data: GearFormValues) => {
+      const selectedCatId = data.categoryId || categories[0]?.id || "";
       const payload = {
         name: data.name,
         description: data.description,
@@ -143,15 +101,36 @@ export default function ProviderDashboardPage() {
       queryClient.invalidateQueries({ queryKey: ["provider-inventory"] });
       queryClient.invalidateQueries({ queryKey: ["gear-catalog"] });
       setIsAddModalOpen(false);
-      reset();
-    },
-    onError: () => {
-      alert("Equipment saved to inventory.");
-      setIsAddModalOpen(false);
+      addForm.reset();
     },
   });
 
-  // TanStack React Query Mutation: Delete Gear
+  // TanStack React Query Mutation: Edit/Update Gear (PUT /provider/gear/:id)
+  const editGearMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: GearFormValues }) => {
+      const payload = {
+        name: data.name,
+        description: data.description,
+        brand: data.brand,
+        pricePerDay: Number(data.pricePerDay),
+        stock: Number(data.stock),
+        categoryId: data.categoryId,
+        images: [
+          data.imageUrl ||
+            "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?auto=format&fit=crop&w=800&q=80",
+        ],
+      };
+      return apiClient.put(`/provider/gear/${id}`, payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["provider-inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["gear-catalog"] });
+      setEditingGear(null);
+      editForm.reset();
+    },
+  });
+
+  // TanStack React Query Mutation: Delete Gear (DELETE /provider/gear/:id)
   const deleteGearMutation = useMutation({
     mutationFn: async (id: string) => {
       return apiClient.delete(`/provider/gear/${id}`);
@@ -162,8 +141,26 @@ export default function ProviderDashboardPage() {
     },
   });
 
-  const handleAddGearSubmit = (data: AddGearFormValues) => {
+  const handleAddGearSubmit = (data: GearFormValues) => {
     addGearMutation.mutate(data);
+  };
+
+  const handleEditGearSubmit = (data: GearFormValues) => {
+    if (!editingGear) return;
+    editGearMutation.mutate({ id: editingGear.id, data });
+  };
+
+  const openEditModal = (gear: GearItem) => {
+    setEditingGear(gear);
+    editForm.reset({
+      name: gear.name,
+      description: gear.description,
+      brand: gear.brand,
+      pricePerDay: gear.pricePerDay,
+      stock: gear.stock,
+      categoryId: gear.categoryId || gear.category?.id || "",
+      imageUrl: gear.images?.[0] || "",
+    });
   };
 
   const handleDeleteGear = (id: string) => {
@@ -200,6 +197,14 @@ export default function ProviderDashboardPage() {
         </div>
       </div>
 
+      {/* API Error Notification Banner if backend fails */}
+      {isError && (
+        <div className="flex items-center gap-2 rounded-2xl bg-rose-50 p-4 text-xs font-bold text-rose-600 border border-rose-200 dark:bg-rose-950/40 dark:border-rose-900">
+          <AlertCircle className="h-5 w-5 shrink-0" />
+          <span>Failed to load inventory from server: {(error as Error)?.message || "Network Error"}</span>
+        </div>
+      )}
+
       {/* Provider Stat Counter Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 flex items-center gap-4">
@@ -217,8 +222,8 @@ export default function ProviderDashboardPage() {
             <ShoppingBag className="h-6 w-6" />
           </div>
           <div>
-            <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Completed Fulfillments</p>
-            <h3 className="text-2xl font-extrabold text-zinc-900 dark:text-white">18 Rentals</h3>
+            <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Inventory Status</p>
+            <h3 className="text-2xl font-extrabold text-zinc-900 dark:text-white">Live Sync</h3>
           </div>
         </div>
 
@@ -227,8 +232,8 @@ export default function ProviderDashboardPage() {
             <DollarSign className="h-6 w-6" />
           </div>
           <div>
-            <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Total Revenue</p>
-            <h3 className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400">$1,420</h3>
+            <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Total Categories</p>
+            <h3 className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400">{categories.length}</h3>
           </div>
         </div>
       </div>
@@ -237,48 +242,62 @@ export default function ProviderDashboardPage() {
       <div className="space-y-4">
         <h2 className="text-lg font-extrabold text-zinc-900 dark:text-white">Equipment Inventory List</h2>
 
-        <div className="overflow-x-auto rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <table className="w-full text-left text-xs whitespace-nowrap">
-            <thead className="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 text-zinc-500 uppercase font-extrabold">
-              <tr>
-                <th className="p-4">Item Name</th>
-                <th className="p-4">Brand</th>
-                <th className="p-4">Category</th>
-                <th className="p-4">Daily Rate</th>
-                <th className="p-4">Stock</th>
-                <th className="p-4">Status</th>
-                <th className="p-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 text-zinc-700 dark:text-zinc-300">
-              {inventory.map((gear) => (
-                <tr key={gear.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/50">
-                  <td className="p-4 font-bold text-zinc-900 dark:text-white">{gear.name}</td>
-                  <td className="p-4 font-semibold">{gear.brand}</td>
-                  <td className="p-4">{gear.category?.name || "General"}</td>
-                  <td className="p-4 font-extrabold text-emerald-600 dark:text-emerald-400">
-                    ${gear.pricePerDay}
-                  </td>
-                  <td className="p-4 font-semibold">{gear.stock} units</td>
-                  <td className="p-4">
-                    <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                      Available
-                    </span>
-                  </td>
-                  <td className="p-4 text-right space-x-2">
-                    <button
-                      onClick={() => handleDeleteGear(gear.id)}
-                      disabled={deleteGearMutation.isPending}
-                      className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg dark:hover:bg-rose-950/40 disabled:opacity-50"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </td>
+        {inventory.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-zinc-300 p-12 text-center text-xs font-bold text-zinc-500 dark:border-zinc-800">
+            No equipment listings in inventory yet. Click "Add New Gear" to create your first listing.
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <table className="w-full text-left text-xs whitespace-nowrap">
+              <thead className="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 text-zinc-500 uppercase font-extrabold">
+                <tr>
+                  <th className="p-4">Item Name</th>
+                  <th className="p-4">Brand</th>
+                  <th className="p-4">Category</th>
+                  <th className="p-4">Daily Rate</th>
+                  <th className="p-4">Stock</th>
+                  <th className="p-4">Status</th>
+                  <th className="p-4 text-right">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 text-zinc-700 dark:text-zinc-300">
+                {inventory.map((gear) => (
+                  <tr key={gear.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/50">
+                    <td className="p-4 font-bold text-zinc-900 dark:text-white">{gear.name}</td>
+                    <td className="p-4 font-semibold">{gear.brand}</td>
+                    <td className="p-4">{gear.category?.name || "General"}</td>
+                    <td className="p-4 font-extrabold text-emerald-600 dark:text-emerald-400">
+                      ${gear.pricePerDay}
+                    </td>
+                    <td className="p-4 font-semibold">{gear.stock} units</td>
+                    <td className="p-4">
+                      <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                        Available
+                      </span>
+                    </td>
+                    <td className="p-4 text-right space-x-2">
+                      <button
+                        onClick={() => openEditModal(gear)}
+                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg dark:hover:bg-blue-950/40 transition-colors"
+                        title="Edit Gear Listing"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteGear(gear.id)}
+                        disabled={deleteGearMutation.isPending}
+                        className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg dark:hover:bg-rose-950/40 disabled:opacity-50 transition-colors"
+                        title="Delete Listing"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Add Gear Modal */}
@@ -292,17 +311,17 @@ export default function ProviderDashboardPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit(handleAddGearSubmit)} className="space-y-4">
+            <form onSubmit={addForm.handleSubmit(handleAddGearSubmit)} className="space-y-4">
               <div>
                 <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Equipment Name</label>
                 <input
-                  {...register("name")}
+                  {...addForm.register("name")}
                   type="text"
                   placeholder="e.g. 4-Person Waterproof Camping Tent"
                   className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
                 />
-                {errors.name && (
-                  <p className="mt-1 text-[11px] text-rose-500 font-semibold">{errors.name.message}</p>
+                {addForm.formState.errors.name && (
+                  <p className="mt-1 text-[11px] text-rose-500 font-semibold">{addForm.formState.errors.name.message}</p>
                 )}
               </div>
 
@@ -310,25 +329,25 @@ export default function ProviderDashboardPage() {
                 <div>
                   <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Brand</label>
                   <input
-                    {...register("brand")}
+                    {...addForm.register("brand")}
                     type="text"
                     placeholder="e.g. NorthFace"
                     className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
                   />
-                  {errors.brand && (
-                    <p className="mt-1 text-[11px] text-rose-500 font-semibold">{errors.brand.message}</p>
+                  {addForm.formState.errors.brand && (
+                    <p className="mt-1 text-[11px] text-rose-500 font-semibold">{addForm.formState.errors.brand.message}</p>
                   )}
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Price per Day ($)</label>
                   <input
-                    {...register("pricePerDay", { valueAsNumber: true })}
+                    {...addForm.register("pricePerDay", { valueAsNumber: true })}
                     type="number"
                     min={1}
                     className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
                   />
-                  {errors.pricePerDay && (
-                    <p className="mt-1 text-[11px] text-rose-500 font-semibold">{errors.pricePerDay.message}</p>
+                  {addForm.formState.errors.pricePerDay && (
+                    <p className="mt-1 text-[11px] text-rose-500 font-semibold">{addForm.formState.errors.pricePerDay.message}</p>
                   )}
                 </div>
               </div>
@@ -337,19 +356,19 @@ export default function ProviderDashboardPage() {
                 <div>
                   <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Stock Quantity</label>
                   <input
-                    {...register("stock", { valueAsNumber: true })}
+                    {...addForm.register("stock", { valueAsNumber: true })}
                     type="number"
                     min={1}
                     className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
                   />
-                  {errors.stock && (
-                    <p className="mt-1 text-[11px] text-rose-500 font-semibold">{errors.stock.message}</p>
+                  {addForm.formState.errors.stock && (
+                    <p className="mt-1 text-[11px] text-rose-500 font-semibold">{addForm.formState.errors.stock.message}</p>
                   )}
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Category</label>
                   <select
-                    {...register("categoryId")}
+                    {...addForm.register("categoryId")}
                     className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
                   >
                     <option value="">Select Category</option>
@@ -359,8 +378,8 @@ export default function ProviderDashboardPage() {
                       </option>
                     ))}
                   </select>
-                  {errors.categoryId && (
-                    <p className="mt-1 text-[11px] text-rose-500 font-semibold">{errors.categoryId.message}</p>
+                  {addForm.formState.errors.categoryId && (
+                    <p className="mt-1 text-[11px] text-rose-500 font-semibold">{addForm.formState.errors.categoryId.message}</p>
                   )}
                 </div>
               </div>
@@ -368,7 +387,7 @@ export default function ProviderDashboardPage() {
               <div>
                 <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Image URL</label>
                 <input
-                  {...register("imageUrl")}
+                  {...addForm.register("imageUrl")}
                   type="url"
                   placeholder="https://images.unsplash.com/..."
                   className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
@@ -378,13 +397,13 @@ export default function ProviderDashboardPage() {
               <div>
                 <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Description</label>
                 <textarea
-                  {...register("description")}
+                  {...addForm.register("description")}
                   rows={3}
                   placeholder="Describe technical specs, capacity, condition..."
                   className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
                 />
-                {errors.description && (
-                  <p className="mt-1 text-[11px] text-rose-500 font-semibold">{errors.description.message}</p>
+                {addForm.formState.errors.description && (
+                  <p className="mt-1 text-[11px] text-rose-500 font-semibold">{addForm.formState.errors.description.message}</p>
                 )}
               </div>
 
@@ -394,6 +413,123 @@ export default function ProviderDashboardPage() {
                 className="w-full rounded-xl bg-emerald-600 py-3 text-xs font-bold text-white shadow hover:bg-emerald-500 transition-all disabled:opacity-50"
               >
                 {addGearMutation.isPending ? "Adding Equipment..." : "Save Equipment to Inventory"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Gear Modal (PUT /provider/gear/:id) */}
+      {editingGear && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-lg space-y-6 rounded-3xl border border-zinc-200 bg-white p-6 shadow-2xl dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="flex items-center justify-between border-b border-zinc-100 pb-3 dark:border-zinc-800">
+              <h3 className="text-base font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                <Pencil className="h-4 w-4 text-blue-500" /> Edit Equipment Listing
+              </h3>
+              <button onClick={() => setEditingGear(null)} className="text-zinc-400 hover:text-zinc-900">
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={editForm.handleSubmit(handleEditGearSubmit)} className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Equipment Name</label>
+                <input
+                  {...editForm.register("name")}
+                  type="text"
+                  className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
+                />
+                {editForm.formState.errors.name && (
+                  <p className="mt-1 text-[11px] text-rose-500 font-semibold">{editForm.formState.errors.name.message}</p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Brand</label>
+                  <input
+                    {...editForm.register("brand")}
+                    type="text"
+                    className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
+                  />
+                  {editForm.formState.errors.brand && (
+                    <p className="mt-1 text-[11px] text-rose-500 font-semibold">{editForm.formState.errors.brand.message}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Price per Day ($)</label>
+                  <input
+                    {...editForm.register("pricePerDay", { valueAsNumber: true })}
+                    type="number"
+                    min={1}
+                    className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
+                  />
+                  {editForm.formState.errors.pricePerDay && (
+                    <p className="mt-1 text-[11px] text-rose-500 font-semibold">{editForm.formState.errors.pricePerDay.message}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Stock Quantity</label>
+                  <input
+                    {...editForm.register("stock", { valueAsNumber: true })}
+                    type="number"
+                    min={1}
+                    className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
+                  />
+                  {editForm.formState.errors.stock && (
+                    <p className="mt-1 text-[11px] text-rose-500 font-semibold">{editForm.formState.errors.stock.message}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Category</label>
+                  <select
+                    {...editForm.register("categoryId")}
+                    className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
+                  >
+                    <option value="">Select Category</option>
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                  {editForm.formState.errors.categoryId && (
+                    <p className="mt-1 text-[11px] text-rose-500 font-semibold">{editForm.formState.errors.categoryId.message}</p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Image URL</label>
+                <input
+                  {...editForm.register("imageUrl")}
+                  type="url"
+                  className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Description</label>
+                <textarea
+                  {...editForm.register("description")}
+                  rows={3}
+                  className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
+                />
+                {editForm.formState.errors.description && (
+                  <p className="mt-1 text-[11px] text-rose-500 font-semibold">{editForm.formState.errors.description.message}</p>
+                )}
+              </div>
+
+              <button
+                type="submit"
+                disabled={editGearMutation.isPending}
+                className="w-full rounded-xl bg-blue-600 py-3 text-xs font-bold text-white shadow hover:bg-blue-500 transition-all disabled:opacity-50"
+              >
+                {editGearMutation.isPending ? "Updating Listing..." : "Update Equipment Listing"}
               </button>
             </form>
           </div>

@@ -140,27 +140,19 @@ const DEMO_GEAR: GearItem[] = [
 
 export default function HomePage() {
   // TanStack React Query for Server State & Caching
-  const { data: gearList = DEMO_GEAR, isLoading: isGearLoading } = useQuery<GearItem[]>({
+  const { data: gearList = [], isLoading: isGearLoading, isError: isGearError, error: gearError } = useQuery<GearItem[]>({
     queryKey: ["gear-catalog"],
     queryFn: async () => {
-      try {
-        const res = await apiClient.get("/gear");
-        return res.data?.data && res.data.data.length > 0 ? res.data.data : DEMO_GEAR;
-      } catch {
-        return DEMO_GEAR;
-      }
+      const res = await apiClient.get("/gear");
+      return res.data?.data || [];
     },
   });
 
-  const { data: categories = DEMO_CATEGORIES } = useQuery<Category[]>({
+  const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ["gear-categories"],
     queryFn: async () => {
-      try {
-        const res = await apiClient.get("/categories");
-        return res.data?.data && res.data.data.length > 0 ? res.data.data : DEMO_CATEGORIES;
-      } catch {
-        return DEMO_CATEGORIES;
-      }
+      const res = await apiClient.get("/categories");
+      return res.data?.data || [];
     },
   });
 

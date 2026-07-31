@@ -42,47 +42,12 @@ export default function GearDetailsPage() {
   }, []);
 
   // TanStack React Query for Single Gear Item Server State
-  const { data: gear, isLoading } = useQuery<GearItem | null>({
+  const { data: gear, isLoading, isError, error } = useQuery<GearItem | null>({
     queryKey: ["gear-detail", gearId],
     queryFn: async () => {
       if (!gearId) return null;
-      try {
-        const res = await apiClient.get(`/gear/${gearId}`);
-        return res.data?.data || null;
-      } catch {
-        return {
-          id: gearId,
-          name: "Ultralight 3-Person Waterproof Tent",
-          description:
-            "Full weather protection lightweight expedition tent with double vestibules for hiking. Designed for harsh alpine conditions with DAC aluminum poles and taped seams.",
-          brand: "NorthFace",
-          pricePerDay: 25,
-          stock: 4,
-          isAvailable: true,
-          images: [
-            "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?auto=format&fit=crop&w=800&q=80",
-          ],
-          isDeleted: false,
-          categoryId: "c1",
-          category: { id: "c1", name: "Camping & Hiking" },
-          providerId: "p1",
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          avgRating: 4.9,
-          reviews: [
-            {
-              id: "r1",
-              rating: 5,
-              comment: "Amazing tent! Kept us dry during heavy rain in the mountains.",
-              createdAt: "2026-07-20",
-              updatedAt: "",
-              gearItemId: gearId,
-              customerId: "c1",
-              customer: { id: "c1", name: "Alex Rover", email: "", role: "CUSTOMER", status: "ACTIVE", createdAt: "", updatedAt: "" },
-            },
-          ],
-        };
-      }
+      const res = await apiClient.get(`/gear/${gearId}`);
+      return res.data?.data || null;
     },
     enabled: !!gearId,
   });
