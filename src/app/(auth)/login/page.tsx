@@ -9,6 +9,10 @@ import { z } from "zod";
 import { useAuth } from "@/context/auth-context";
 import { apiClient } from "@/lib/api-client";
 import { Dumbbell, ArrowRight, Lock, Mail, AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 
 const loginSchema = z.object({
   email: z.string().min(1, "Email is required").email("Invalid email address"),
@@ -67,78 +71,76 @@ function LoginForm() {
   };
 
   return (
-    <div className="w-full max-w-md space-y-8 rounded-3xl border border-zinc-200 bg-white p-8 shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
-      <div className="text-center space-y-2">
+    <Card className="w-full max-w-md shadow-xl border-zinc-200 dark:border-zinc-800">
+      <CardHeader className="text-center space-y-2 pb-4">
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-600 text-white font-bold shadow-md shadow-emerald-600/20">
           <Dumbbell className="h-6 w-6" />
         </div>
-        <h2 className="text-2xl font-extrabold text-zinc-900 dark:text-white">
-          Welcome Back to GearUp
-        </h2>
-        <p className="text-xs text-zinc-500">Sign in to manage rentals & access your role dashboard</p>
-      </div>
+        <CardTitle className="text-2xl font-extrabold">Welcome Back to GearUp</CardTitle>
+        <CardDescription>Sign in to manage rentals & access your role dashboard</CardDescription>
+      </CardHeader>
 
-      {errorMessage && (
-        <div className="flex items-center gap-2.5 rounded-2xl bg-rose-50 p-4 text-xs font-bold text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200/50 dark:border-rose-900/50">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          <span>{errorMessage}</span>
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div>
-          <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300">
-            Email Address
-          </label>
-          <div className="relative mt-1">
-            <Mail className="absolute left-3.5 top-3 h-4 w-4 text-zinc-400" />
-            <input
-              {...register("email")}
-              type="email"
-              placeholder="customer@example.com"
-              className="w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-10 pr-4 py-2.5 text-xs font-medium text-zinc-900 focus:border-emerald-500 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white"
-            />
+      <CardContent className="space-y-4">
+        {errorMessage && (
+          <div className="flex items-center gap-2.5 rounded-2xl bg-rose-50 p-4 text-xs font-bold text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200/50 dark:border-rose-900/50">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>{errorMessage}</span>
           </div>
-          {errors.email && (
-            <p className="mt-1 text-[11px] text-rose-500 font-semibold">{errors.email.message}</p>
-          )}
-        </div>
+        )}
 
-        <div>
-          <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300">
-            Password
-          </label>
-          <div className="relative mt-1">
-            <Lock className="absolute left-3.5 top-3 h-4 w-4 text-zinc-400" />
-            <input
-              {...register("password")}
-              type="password"
-              placeholder="••••••••"
-              className="w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-10 pr-4 py-2.5 text-xs font-medium text-zinc-900 focus:border-emerald-500 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white"
-            />
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="email">Email Address</Label>
+            <div className="relative">
+              <Mail className="absolute left-3.5 top-3 h-4 w-4 text-zinc-400 z-10" />
+              <Input
+                id="email"
+                {...register("email")}
+                type="email"
+                placeholder="customer@example.com"
+                className="pl-10"
+              />
+            </div>
+            {errors.email && (
+              <p className="mt-1 text-[11px] text-rose-500 font-semibold">{errors.email.message}</p>
+            )}
           </div>
-          {errors.password && (
-            <p className="mt-1 text-[11px] text-rose-500 font-semibold">{errors.password.message}</p>
-          )}
-        </div>
 
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-xs sm:text-sm font-extrabold text-white shadow-lg shadow-emerald-600/30 hover:bg-emerald-500 disabled:opacity-50 transition-all"
-        >
-          {isLoading ? "Signing in..." : "Sign In to Account"}
-          <ArrowRight className="h-4 w-4" />
-        </button>
-      </form>
+          <div className="space-y-1.5">
+            <Label htmlFor="password">Password</Label>
+            <div className="relative">
+              <Lock className="absolute left-3.5 top-3 h-4 w-4 text-zinc-400 z-10" />
+              <Input
+                id="password"
+                {...register("password")}
+                type="password"
+                placeholder="••••••••"
+                className="pl-10"
+              />
+            </div>
+            {errors.password && (
+              <p className="mt-1 text-[11px] text-rose-500 font-semibold">{errors.password.message}</p>
+            )}
+          </div>
 
-      <div className="text-center text-xs text-zinc-500 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+          <Button
+            type="submit"
+            disabled={isLoading}
+            className="w-full h-11 text-xs sm:text-sm font-extrabold mt-2"
+          >
+            {isLoading ? "Signing in..." : "Sign In to Account"}
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        </form>
+      </CardContent>
+
+      <CardFooter className="justify-center border-t border-zinc-100 dark:border-zinc-800 pt-4 text-xs text-zinc-500">
         Don't have an account?{" "}
-        <Link href="/register" className="font-extrabold text-emerald-600 hover:underline">
+        <Link href="/register" className="font-extrabold text-emerald-600 hover:underline ml-1">
           Register now
         </Link>
-      </div>
-    </div>
+      </CardFooter>
+    </Card>
   );
 }
 
