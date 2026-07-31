@@ -1,22 +1,26 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { useAuth } from "@/context/auth-context";
 import { apiClient } from "@/lib/api-client";
 import { User, Category, UserStatus } from "@/types";
 import {
   ShieldCheck,
   Users,
-  Store,
   Layers,
-  ShoppingBag,
   Plus,
-  Trash2,
   UserCheck,
   UserX,
-  AlertCircle,
-  TrendingUp,
 } from "lucide-react";
+
+const categorySchema = z.object({
+  name: z.string().min(2, "Category name must be at least 2 characters"),
+});
+
+type CategoryFormValues = z.infer<typeof categorySchema>;
 
 export default function AdminDashboardPage() {
   const { user: currentAdmin } = useAuth();
@@ -26,7 +30,18 @@ export default function AdminDashboardPage() {
 
   // Category modal
   const [isCatModalOpen, setIsCatModalOpen] = useState(false);
-  const [newCatName, setNewCatName] = useState("");
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<CategoryFormValues>({
+    resolver: zodResolver(categorySchema),
+    defaultValues: {
+      name: "",
+    },
+  });
 
   useEffect(() => {
     const fetchAdminData = async () => {
@@ -98,21 +113,18 @@ export default function AdminDashboardPage() {
     );
   };
 
-  const handleAddCategory = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newCatName.trim()) return;
-
+  const handleAddCategorySubmit = async (data: CategoryFormValues) => {
     try {
-      const res = await apiClient.post("/categories", { name: newCatName });
+      const res = await apiClient.post("/categories", { name: data.name });
       if (res.data?.data) {
         setCategories([...categories, res.data.data]);
       } else {
-        setCategories([...categories, { id: `cat-${Date.now()}`, name: newCatName }]);
+        setCategories([...categories, { id: `cat-${Date.now()}`, name: data.name }]);
       }
     } catch {
-      setCategories([...categories, { id: `cat-${Date.now()}`, name: newCatName }]);
+      setCategories([...categories, { id: `cat-${Date.now()}`, name: data.name }]);
     } finally {
-      setNewCatName("");
+      reset();
       setIsCatModalOpen(false);
     }
   };
@@ -292,17 +304,18 @@ export default function AdminDashboardPage() {
               </button>
             </div>
 
-            <form onSubmit={handleAddCategory} className="space-y-4">
+            <form onSubmit={handleSubmit(handleAddCategorySubmit)} className="space-y-4">
               <div>
                 <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Category Name</label>
                 <input
+                  {...register("name")}
                   type="text"
-                  required
                   placeholder="e.g. Climbing & Mountaineering"
-                  value={newCatName}
-                  onChange={(e) => setNewCatName(e.target.value)}
                   className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
                 />
+                {errors.name && (
+                  <p className="mt-1 text-[11px] text-rose-500 font-semibold">{errors.name.message}</p>
+                )}
               </div>
 
               <button

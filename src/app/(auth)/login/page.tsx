@@ -3,9 +3,19 @@
 import React, { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { useAuth } from "@/context/auth-context";
 import { apiClient } from "@/lib/api-client";
-import { Dumbbell, ArrowRight, Lock, Mail, AlertCircle, Sparkles } from "lucide-react";
+import { Dumbbell, ArrowRight, Lock, Mail, AlertCircle } from "lucide-react";
+
+const loginSchema = z.object({
+  email: z.string().min(1, "Email is required").email("Invalid email address"),
+  password: z.string().min(1, "Password is required").min(6, "Password must be at least 6 characters"),
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
 
 function LoginForm() {
   const router = useRouter();
@@ -13,18 +23,30 @@ function LoginForm() {
   const from = searchParams.get("from") || "/dashboard";
 
   const { login } = useAuth();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  const onSubmit = async (data: LoginFormValues) => {
     setErrorMessage("");
     setIsLoading(true);
 
     try {
-      const res = await apiClient.post("/auth/login", { email, password });
+      const res = await apiClient.post("/auth/login", {
+        email: data.email,
+        password: data.password,
+      });
       if (res.data?.data?.token) {
         const { token, user } = res.data.data;
         login(token, user);
@@ -63,7 +85,7 @@ function LoginForm() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div>
           <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300">
             Email Address
@@ -71,14 +93,15 @@ function LoginForm() {
           <div className="relative mt-1">
             <Mail className="absolute left-3.5 top-3 h-4 w-4 text-zinc-400" />
             <input
+              {...register("email")}
               type="email"
-              required
               placeholder="customer@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
               className="w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-10 pr-4 py-2.5 text-xs font-medium text-zinc-900 focus:border-emerald-500 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white"
             />
           </div>
+          {errors.email && (
+            <p className="mt-1 text-[11px] text-rose-500 font-semibold">{errors.email.message}</p>
+          )}
         </div>
 
         <div>
@@ -88,14 +111,15 @@ function LoginForm() {
           <div className="relative mt-1">
             <Lock className="absolute left-3.5 top-3 h-4 w-4 text-zinc-400" />
             <input
+              {...register("password")}
               type="password"
-              required
               placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
               className="w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-10 pr-4 py-2.5 text-xs font-medium text-zinc-900 focus:border-emerald-500 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white"
             />
           </div>
+          {errors.password && (
+            <p className="mt-1 text-[11px] text-rose-500 font-semibold">{errors.password.message}</p>
+          )}
         </div>
 
         <button

@@ -1,22 +1,25 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { useAuth } from "@/context/auth-context";
 import { apiClient } from "@/lib/api-client";
 import { RentalOrder, Payment } from "@/types";
 import {
-  ShoppingBag,
-  Clock,
-  CheckCircle2,
-  XCircle,
   CreditCard,
   Star,
   Package,
-  Calendar,
-  AlertCircle,
   MessageSquare,
-  Sparkles,
 } from "lucide-react";
+
+const reviewSchema = z.object({
+  rating: z.coerce.number().min(1, "Rating must be at least 1 star").max(5, "Rating cannot exceed 5 stars"),
+  comment: z.string().min(3, "Review comment must be at least 3 characters"),
+});
+
+type ReviewFormValues = z.infer<typeof reviewSchema>;
 
 export default function CustomerDashboardPage() {
   const { user } = useAuth();
@@ -27,10 +30,25 @@ export default function CustomerDashboardPage() {
 
   // Interactive Review Modal State
   const [selectedRentalItem, setSelectedRentalItem] = useState<any>(null);
-  const [rating, setRating] = useState<number>(5);
-  const [comment, setComment] = useState<string>("");
   const [isSubmittingReview, setIsSubmittingReview] = useState<boolean>(false);
   const [reviewSuccess, setReviewSuccess] = useState<string>("");
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    formState: { errors },
+  } = useForm<ReviewFormValues>({
+    resolver: zodResolver(reviewSchema),
+    defaultValues: {
+      rating: 5,
+      comment: "",
+    },
+  });
+
+  const selectedRating = watch("rating");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -160,27 +178,28 @@ export default function CustomerDashboardPage() {
     fetchData();
   }, [user]);
 
-  const handleReviewSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleReviewSubmit = async (data: ReviewFormValues) => {
     if (!selectedRentalItem) return;
     setIsSubmittingReview(true);
 
     try {
       await apiClient.post("/reviews", {
         gearItemId: selectedRentalItem.gearItemId,
-        rating,
-        comment,
+        rating: data.rating,
+        comment: data.comment,
       });
       setReviewSuccess("Review submitted successfully! Thank you for rating this gear.");
       setTimeout(() => {
         setSelectedRentalItem(null);
         setReviewSuccess("");
+        reset();
       }, 2000);
     } catch {
       setReviewSuccess("Review submitted! Thank you for rating this gear.");
       setTimeout(() => {
         setSelectedRentalItem(null);
         setReviewSuccess("");
+        reset();
       }, 2000);
     } finally {
       setIsSubmittingReview(false);
@@ -290,7 +309,10 @@ export default function CustomerDashboardPage() {
 
                           {order.status === "RETURNED" && (
                             <button
-                              onClick={() => setSelectedRentalItem(item)}
+                              onClick={() => {
+                                setSelectedRentalItem(item);
+                                reset({ rating: 5, comment: "" });
+                              }}
                               className="flex items-center gap-1.5 rounded-xl bg-amber-500 px-3.5 py-1.5 text-xs font-bold text-white shadow hover:bg-amber-400 transition-all"
                             >
                               <Star className="h-3.5 w-3.5 fill-white" /> Leave Review
@@ -359,7 +381,7 @@ export default function CustomerDashboardPage() {
                 {reviewSuccess}
               </div>
             ) : (
-              <form onSubmit={handleReviewSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit(handleReviewSubmit)} className="space-y-4">
                 <div>
                   <label className="text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
                     Rating (1 to 5 Stars)
@@ -369,15 +391,18 @@ export default function CustomerDashboardPage() {
                       <button
                         type="button"
                         key={star}
-                        onClick={() => setRating(star)}
+                        onClick={() => setValue("rating", star)}
                         className={`p-2 rounded-xl transition-all ${
-                          rating >= star ? "text-amber-400 scale-110" : "text-zinc-300 dark:text-zinc-700"
+                          selectedRating >= star ? "text-amber-400 scale-110" : "text-zinc-300 dark:text-zinc-700"
                         }`}
                       >
                         <Star className="h-6 w-6 fill-current" />
                       </button>
                     ))}
                   </div>
+                  {errors.rating && (
+                    <p className="mt-1 text-[11px] text-rose-500 font-semibold">{errors.rating.message}</p>
+                  )}
                 </div>
 
                 <div>
@@ -385,13 +410,14 @@ export default function CustomerDashboardPage() {
                     Review Comments
                   </label>
                   <textarea
-                    required
+                    {...register("comment")}
                     rows={3}
                     placeholder="Tell us about the equipment quality, durability, and handoff experience..."
-                    value={comment}
-                    onChange={(e) => setComment(e.target.value)}
                     className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
                   />
+                  {errors.comment && (
+                    <p className="mt-1 text-[11px] text-rose-500 font-semibold">{errors.comment.message}</p>
+                  )}
                 </div>
 
                 <button

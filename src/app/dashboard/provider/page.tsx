@@ -2,6 +2,9 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { useAuth } from "@/context/auth-context";
 import { apiClient } from "@/lib/api-client";
 import { GearItem, Category } from "@/types";
@@ -10,14 +13,21 @@ import {
   Plus,
   Package,
   DollarSign,
-  Layers,
   Trash2,
-  Edit,
-  CheckCircle2,
-  AlertCircle,
   ShoppingBag,
-  TrendingUp,
 } from "lucide-react";
+
+const addGearSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  description: z.string().min(5, "Description must be at least 5 characters"),
+  brand: z.string().min(1, "Brand is required"),
+  pricePerDay: z.coerce.number().min(1, "Price per day must be at least $1"),
+  stock: z.coerce.number().min(1, "Stock must be at least 1 unit"),
+  categoryId: z.string().min(1, "Category is required"),
+  imageUrl: z.string().optional(),
+});
+
+type AddGearFormValues = z.infer<typeof addGearSchema>;
 
 export default function ProviderDashboardPage() {
   const { user } = useAuth();
@@ -27,14 +37,25 @@ export default function ProviderDashboardPage() {
 
   // Modal State for Add Gear
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [brand, setBrand] = useState("");
-  const [pricePerDay, setPricePerDay] = useState(30);
-  const [stock, setStock] = useState(2);
-  const [categoryId, setCategoryId] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<AddGearFormValues>({
+    resolver: zodResolver(addGearSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      brand: "",
+      pricePerDay: 30,
+      stock: 2,
+      categoryId: "",
+      imageUrl: "",
+    },
+  });
 
   const fetchProviderData = async () => {
     setIsLoading(true);
@@ -49,9 +70,6 @@ export default function ProviderDashboardPage() {
       }
       if (catRes.status === "fulfilled" && catRes.value.data?.data) {
         setCategories(catRes.value.data.data);
-        if (catRes.value.data.data.length > 0) {
-          setCategoryId(catRes.value.data.data[0].id);
-        }
       }
     } catch (err) {
       console.warn("Using demo provider inventory:", err);
@@ -107,20 +125,20 @@ export default function ProviderDashboardPage() {
     fetchProviderData();
   }, []);
 
-  const handleAddGear = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAddGearSubmit = async (data: AddGearFormValues) => {
     setIsSubmitting(true);
 
     try {
+      const selectedCatId = data.categoryId || categories[0]?.id || "c1";
       const payload = {
-        name,
-        description,
-        brand,
-        pricePerDay: Number(pricePerDay),
-        stock: Number(stock),
-        categoryId: categoryId || categories[0]?.id || "c1",
+        name: data.name,
+        description: data.description,
+        brand: data.brand,
+        pricePerDay: Number(data.pricePerDay),
+        stock: Number(data.stock),
+        categoryId: selectedCatId,
         images: [
-          imageUrl ||
+          data.imageUrl ||
             "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?auto=format&fit=crop&w=800&q=80",
         ],
       };
@@ -131,11 +149,11 @@ export default function ProviderDashboardPage() {
       } else {
         const newItem: GearItem = {
           id: `item-${Date.now()}`,
-          name,
-          description,
-          brand,
-          pricePerDay: Number(pricePerDay),
-          stock: Number(stock),
+          name: data.name,
+          description: data.description,
+          brand: data.brand,
+          pricePerDay: Number(data.pricePerDay),
+          stock: Number(data.stock),
           isAvailable: true,
           images: [payload.images[0]],
           isDeleted: false,
@@ -149,10 +167,7 @@ export default function ProviderDashboardPage() {
       }
 
       setIsAddModalOpen(false);
-      setName("");
-      setDescription("");
-      setBrand("");
-      setImageUrl("");
+      reset();
     } catch {
       alert("Added equipment to inventory.");
       setIsAddModalOpen(false);
@@ -291,41 +306,44 @@ export default function ProviderDashboardPage() {
               </button>
             </div>
 
-            <form onSubmit={handleAddGear} className="space-y-4">
+            <form onSubmit={handleSubmit(handleAddGearSubmit)} className="space-y-4">
               <div>
                 <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Equipment Name</label>
                 <input
+                  {...register("name")}
                   type="text"
-                  required
                   placeholder="e.g. 4-Person Waterproof Camping Tent"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
                   className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
                 />
+                {errors.name && (
+                  <p className="mt-1 text-[11px] text-rose-500 font-semibold">{errors.name.message}</p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Brand</label>
                   <input
+                    {...register("brand")}
                     type="text"
-                    required
                     placeholder="e.g. NorthFace"
-                    value={brand}
-                    onChange={(e) => setBrand(e.target.value)}
                     className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
                   />
+                  {errors.brand && (
+                    <p className="mt-1 text-[11px] text-rose-500 font-semibold">{errors.brand.message}</p>
+                  )}
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Price per Day ($)</label>
                   <input
+                    {...register("pricePerDay")}
                     type="number"
-                    required
                     min={1}
-                    value={pricePerDay}
-                    onChange={(e) => setPricePerDay(Number(e.target.value))}
                     className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
                   />
+                  {errors.pricePerDay && (
+                    <p className="mt-1 text-[11px] text-rose-500 font-semibold">{errors.pricePerDay.message}</p>
+                  )}
                 </div>
               </div>
 
@@ -333,37 +351,40 @@ export default function ProviderDashboardPage() {
                 <div>
                   <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Stock Quantity</label>
                   <input
+                    {...register("stock")}
                     type="number"
-                    required
                     min={1}
-                    value={stock}
-                    onChange={(e) => setStock(Number(e.target.value))}
                     className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
                   />
+                  {errors.stock && (
+                    <p className="mt-1 text-[11px] text-rose-500 font-semibold">{errors.stock.message}</p>
+                  )}
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Category</label>
                   <select
-                    value={categoryId}
-                    onChange={(e) => setCategoryId(e.target.value)}
+                    {...register("categoryId")}
                     className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
                   >
+                    <option value="">Select Category</option>
                     {categories.map((cat) => (
                       <option key={cat.id} value={cat.id}>
                         {cat.name}
                       </option>
                     ))}
                   </select>
+                  {errors.categoryId && (
+                    <p className="mt-1 text-[11px] text-rose-500 font-semibold">{errors.categoryId.message}</p>
+                  )}
                 </div>
               </div>
 
               <div>
                 <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Image URL</label>
                 <input
+                  {...register("imageUrl")}
                   type="url"
                   placeholder="https://images.unsplash.com/..."
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
                   className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
                 />
               </div>
@@ -371,13 +392,14 @@ export default function ProviderDashboardPage() {
               <div>
                 <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Description</label>
                 <textarea
-                  required
+                  {...register("description")}
                   rows={3}
                   placeholder="Describe technical specs, capacity, condition..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
                   className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white font-medium"
                 />
+                {errors.description && (
+                  <p className="mt-1 text-[11px] text-rose-500 font-semibold">{errors.description.message}</p>
+                )}
               </div>
 
               <button

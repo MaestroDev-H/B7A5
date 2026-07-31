@@ -3,10 +3,22 @@
 import React, { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { useAuth } from "@/context/auth-context";
 import { apiClient } from "@/lib/api-client";
 import { Role } from "@/types";
 import { Dumbbell, ArrowRight, Lock, Mail, User as UserIcon, Store, AlertCircle } from "lucide-react";
+
+const registerSchema = z.object({
+  name: z.string().min(2, "Full name must be at least 2 characters"),
+  email: z.string().min(1, "Email is required").email("Invalid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  role: z.enum(["CUSTOMER", "PROVIDER"]),
+});
+
+type RegisterFormValues = z.infer<typeof registerSchema>;
 
 function RegisterForm() {
   const router = useRouter();
@@ -14,31 +26,47 @@ function RegisterForm() {
   const initialRole = (searchParams.get("role") as Role) || "CUSTOMER";
 
   const { login } = useAuth();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [role, setRole] = useState<Role>(initialRole);
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<RegisterFormValues>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      password: "",
+      role: initialRole === "PROVIDER" ? "PROVIDER" : "CUSTOMER",
+    },
+  });
+
+  const selectedRole = watch("role");
+
+  const onSubmit = async (data: RegisterFormValues) => {
     setErrorMessage("");
     setIsLoading(true);
 
     try {
       const res = await apiClient.post("/auth/register", {
-        name,
-        email,
-        password,
-        role,
+        name: data.name,
+        email: data.email,
+        password: data.password,
+        role: data.role,
       });
 
       if (res.data?.data) {
-        const loginRes = await apiClient.post("/auth/login", { email, password });
+        const loginRes = await apiClient.post("/auth/login", {
+          email: data.email,
+          password: data.password,
+        });
         if (loginRes.data?.data?.token) {
           login(loginRes.data.data.token, loginRes.data.data.user);
-          router.push(role === "PROVIDER" ? "/dashboard/provider" : "/dashboard/customer");
+          router.push(data.role === "PROVIDER" ? "/dashboard/provider" : "/dashboard/customer");
         } else {
           router.push("/login");
         }
@@ -69,7 +97,7 @@ function RegisterForm() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div>
           <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
             Account Type / Role
@@ -77,9 +105,9 @@ function RegisterForm() {
           <div className="grid grid-cols-2 gap-3 mt-1.5">
             <button
               type="button"
-              onClick={() => setRole("CUSTOMER")}
+              onClick={() => setValue("role", "CUSTOMER")}
               className={`flex flex-col items-center justify-center rounded-2xl border p-3.5 text-center transition-all ${
-                role === "CUSTOMER"
+                selectedRole === "CUSTOMER"
                   ? "border-emerald-600 bg-emerald-50 text-emerald-700 font-bold dark:bg-emerald-950/40 dark:text-emerald-300"
                   : "border-zinc-200 bg-zinc-50 text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400"
               }`}
@@ -91,9 +119,9 @@ function RegisterForm() {
 
             <button
               type="button"
-              onClick={() => setRole("PROVIDER")}
+              onClick={() => setValue("role", "PROVIDER")}
               className={`flex flex-col items-center justify-center rounded-2xl border p-3.5 text-center transition-all ${
-                role === "PROVIDER"
+                selectedRole === "PROVIDER"
                   ? "border-emerald-600 bg-emerald-50 text-emerald-700 font-bold dark:bg-emerald-950/40 dark:text-emerald-300"
                   : "border-zinc-200 bg-zinc-50 text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400"
               }`}
@@ -112,14 +140,15 @@ function RegisterForm() {
           <div className="relative mt-1">
             <UserIcon className="absolute left-3.5 top-3 h-4 w-4 text-zinc-400" />
             <input
+              {...register("name")}
               type="text"
-              required
               placeholder="John Doe"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
               className="w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-10 pr-4 py-2.5 text-sm text-zinc-900 focus:border-emerald-500 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white"
             />
           </div>
+          {errors.name && (
+            <p className="mt-1 text-[11px] text-rose-500 font-semibold">{errors.name.message}</p>
+          )}
         </div>
 
         <div>
@@ -129,14 +158,15 @@ function RegisterForm() {
           <div className="relative mt-1">
             <Mail className="absolute left-3.5 top-3 h-4 w-4 text-zinc-400" />
             <input
+              {...register("email")}
               type="email"
-              required
               placeholder="john@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
               className="w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-10 pr-4 py-2.5 text-sm text-zinc-900 focus:border-emerald-500 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white"
             />
           </div>
+          {errors.email && (
+            <p className="mt-1 text-[11px] text-rose-500 font-semibold">{errors.email.message}</p>
+          )}
         </div>
 
         <div>
@@ -146,15 +176,15 @@ function RegisterForm() {
           <div className="relative mt-1">
             <Lock className="absolute left-3.5 top-3 h-4 w-4 text-zinc-400" />
             <input
+              {...register("password")}
               type="password"
-              required
-              minLength={6}
               placeholder="At least 6 characters"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
               className="w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-10 pr-4 py-2.5 text-sm text-zinc-900 focus:border-emerald-500 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-white"
             />
           </div>
+          {errors.password && (
+            <p className="mt-1 text-[11px] text-rose-500 font-semibold">{errors.password.message}</p>
+          )}
         </div>
 
         <button
@@ -162,7 +192,7 @@ function RegisterForm() {
           disabled={isLoading}
           className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-600/30 hover:bg-emerald-500 disabled:opacity-50 transition-all"
         >
-          {isLoading ? "Creating Account..." : `Register as ${role}`}
+          {isLoading ? "Creating Account..." : `Register as ${selectedRole}`}
           <ArrowRight className="h-4 w-4" />
         </button>
       </form>
