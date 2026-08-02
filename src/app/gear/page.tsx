@@ -144,7 +144,16 @@ function GearCatalogContent() {
     queryFn: async () => {
       try {
         const res = await apiClient.get("/gear");
-        if (res.data?.data && res.data.data.length > 0) return res.data.data;
+        if (res.data?.data && res.data.data.length > 0) {
+          const apiGear: GearItem[] = res.data.data;
+          const combined = [...DEMO_GEAR];
+          apiGear.forEach((item) => {
+            if (!combined.some((d) => d.id === item.id || d.name.toLowerCase() === item.name.toLowerCase())) {
+              combined.push(item);
+            }
+          });
+          return combined;
+        }
       } catch {}
       return DEMO_GEAR;
     },
@@ -155,7 +164,16 @@ function GearCatalogContent() {
     queryFn: async () => {
       try {
         const res = await apiClient.get("/categories");
-        if (res.data?.data && res.data.data.length > 0) return res.data.data;
+        if (res.data?.data && res.data.data.length > 0) {
+          const apiCat: Category[] = res.data.data;
+          const combined = [...DEMO_CATEGORIES];
+          apiCat.forEach((c) => {
+            if (!combined.some((d) => d.id === c.id || d.name.toLowerCase() === c.name.toLowerCase())) {
+              combined.push(c);
+            }
+          });
+          return combined;
+        }
       } catch {}
       return DEMO_CATEGORIES;
     },
