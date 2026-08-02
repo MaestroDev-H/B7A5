@@ -13,7 +13,7 @@ export function middleware(request: NextRequest) {
   // 1. Unauthenticated users trying to access protected routes
   if (!token && (isDashboardRoute || isCheckoutRoute)) {
     const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("from", pathname);
+    loginUrl.searchParams.set("from", request.nextUrl.pathname + request.nextUrl.search);
     return NextResponse.redirect(loginUrl);
   }
 

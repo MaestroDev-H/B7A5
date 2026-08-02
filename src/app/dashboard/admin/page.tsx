@@ -7,7 +7,7 @@ import { z } from "zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-context";
 import { apiClient } from "@/lib/api-client";
-import { User, Category, UserStatus } from "@/types";
+import { User, Category, UserStatus, GearItem, RentalOrder } from "@/types";
 import {
   ShieldCheck,
   Users,
@@ -18,6 +18,8 @@ import {
   Pencil,
   Trash2,
   AlertCircle,
+  Package,
+  ShoppingBag,
 } from "lucide-react";
 
 const categorySchema = z.object({
@@ -29,7 +31,7 @@ type CategoryFormValues = z.infer<typeof categorySchema>;
 export default function AdminDashboardPage() {
   const { user: currentAdmin } = useAuth();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<"users" | "categories">("users");
+  const [activeTab, setActiveTab] = useState<"users" | "categories" | "gear" | "orders">("users");
 
   // Modals state
   const [isCatModalOpen, setIsCatModalOpen] = useState(false);
@@ -71,6 +73,52 @@ export default function AdminDashboardPage() {
     queryFn: async () => {
       const res = await apiClient.get("/categories");
       return res.data?.data || [];
+    },
+  });
+
+  // TanStack React Query: Fetch All Platform Gear Listings for Content Moderation
+  const { data: allGear = [] } = useQuery<GearItem[]>({
+    queryKey: ["admin-all-gear"],
+    queryFn: async () => {
+      try {
+        const res = await apiClient.get("/gear");
+        return res.data?.data || [];
+      } catch {
+        return [];
+      }
+    },
+  });
+
+  // TanStack React Query: Fetch All Platform Rental Orders for Moderation
+  const { data: allOrders = [] } = useQuery<RentalOrder[]>({
+    queryKey: ["admin-all-orders"],
+    queryFn: async () => {
+      try {
+        const res = await apiClient.get("/rentals");
+        return res.data?.data || [];
+      } catch {
+        try {
+          return JSON.parse(localStorage.getItem("gearup_orders_store") || "[]");
+        } catch {
+          return [];
+        }
+      }
+    },
+  });
+
+  // Delete Gear Listing Mutation for Moderation
+  const deleteGearMutation = useMutation({
+    mutationFn: async (gearId: string) => {
+      try {
+        return await apiClient.delete(`/gear/${gearId}`);
+      } catch {
+        return await apiClient.delete(`/provider/gear/${gearId}`);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-all-gear"] });
+      queryClient.invalidateQueries({ queryKey: ["gear-catalog"] });
+      alert("Gear listing deleted by platform moderator.");
     },
   });
 
@@ -166,7 +214,7 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex gap-2 rounded-2xl bg-zinc-100 p-1 dark:bg-zinc-900">
+        <div className="flex flex-wrap gap-2 rounded-2xl bg-zinc-100 p-1 dark:bg-zinc-900">
           <button
             onClick={() => setActiveTab("users")}
             className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all ${
@@ -175,7 +223,27 @@ export default function AdminDashboardPage() {
                 : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
             }`}
           >
-            <Users className="h-4 w-4" /> Users Management ({users.length})
+            <Users className="h-4 w-4" /> Users ({users.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("gear")}
+            className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all ${
+              activeTab === "gear"
+                ? "bg-white text-emerald-600 shadow-sm dark:bg-zinc-800 dark:text-emerald-400"
+                : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+            }`}
+          >
+            <Package className="h-4 w-4" /> All Gear ({allGear.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("orders")}
+            className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all ${
+              activeTab === "orders"
+                ? "bg-white text-emerald-600 shadow-sm dark:bg-zinc-800 dark:text-emerald-400"
+                : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+            }`}
+          >
+            <ShoppingBag className="h-4 w-4" /> All Orders ({allOrders.length})
           </button>
           <button
             onClick={() => setActiveTab("categories")}
@@ -185,7 +253,7 @@ export default function AdminDashboardPage() {
                 : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
             }`}
           >
-            <Layers className="h-4 w-4" /> Gear Categories ({categories.length})
+            <Layers className="h-4 w-4" /> Categories ({categories.length})
           </button>
         </div>
       </div>
@@ -293,6 +361,102 @@ export default function AdminDashboardPage() {
                             )}
                           </button>
                         )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* All Gear Listings Content Moderation Tab */}
+      {activeTab === "gear" && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-extrabold text-zinc-900 dark:text-white">Platform Content Moderation: All Gear Listings</h2>
+
+          {allGear.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-zinc-300 p-12 text-center text-xs font-bold text-zinc-500 dark:border-zinc-800">
+              No gear listings found across the platform.
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+              <table className="w-full text-left text-xs whitespace-nowrap">
+                <thead className="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 text-zinc-500 uppercase font-extrabold">
+                  <tr>
+                    <th className="p-4">Gear Name</th>
+                    <th className="p-4">Brand</th>
+                    <th className="p-4">Category</th>
+                    <th className="p-4">Daily Rate</th>
+                    <th className="p-4">Stock</th>
+                    <th className="p-4">Provider ID</th>
+                    <th className="p-4 text-right">Moderation Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 text-zinc-700 dark:text-zinc-300">
+                  {allGear.map((g) => (
+                    <tr key={g.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/50">
+                      <td className="p-4 font-bold text-zinc-900 dark:text-white">{g.name}</td>
+                      <td className="p-4 font-semibold">{g.brand}</td>
+                      <td className="p-4">{g.category?.name || "General"}</td>
+                      <td className="p-4 font-extrabold text-emerald-600">${g.pricePerDay}</td>
+                      <td className="p-4">{g.stock} units</td>
+                      <td className="p-4 font-mono text-[11px]">{g.providerId || "Vendor Shop"}</td>
+                      <td className="p-4 text-right">
+                        <button
+                          onClick={() => {
+                            if (confirm(`Moderator confirmation: Remove listing "${g.name}" from platform?`)) {
+                              deleteGearMutation.mutate(g.id);
+                            }
+                          }}
+                          disabled={deleteGearMutation.isPending}
+                          className="inline-flex items-center gap-1 rounded-xl bg-rose-50 px-3 py-1.5 font-bold text-xs text-rose-600 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400 transition-colors"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" /> Moderate / Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* All Rental Orders Content Moderation Tab */}
+      {activeTab === "orders" && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-extrabold text-zinc-900 dark:text-white">Platform Content Moderation: All Rental Orders</h2>
+
+          {allOrders.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-zinc-300 p-12 text-center text-xs font-bold text-zinc-500 dark:border-zinc-800">
+              No rental orders recorded across the platform.
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+              <table className="w-full text-left text-xs whitespace-nowrap">
+                <thead className="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 text-zinc-500 uppercase font-extrabold">
+                  <tr>
+                    <th className="p-4">Order ID</th>
+                    <th className="p-4">Customer</th>
+                    <th className="p-4">Rental Period</th>
+                    <th className="p-4">Total Amount</th>
+                    <th className="p-4">Order Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 text-zinc-700 dark:text-zinc-300">
+                  {allOrders.map((o) => (
+                    <tr key={o.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/50">
+                      <td className="p-4 font-mono font-bold text-zinc-900 dark:text-white">#{o.id}</td>
+                      <td className="p-4 font-medium">{o.customer?.name || o.customerId}</td>
+                      <td className="p-4">{o.startDate} → {o.endDate}</td>
+                      <td className="p-4 font-extrabold text-emerald-600 text-sm">${o.totalAmount}</td>
+                      <td className="p-4">
+                        <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 font-extrabold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                          {o.status}
+                        </span>
                       </td>
                     </tr>
                   ))}

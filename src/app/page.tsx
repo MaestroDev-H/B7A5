@@ -37,8 +37,8 @@ const DEMO_GEAR: GearItem[] = [
     categoryId: "1",
     category: { id: "1", name: "Camping & Hiking" },
     providerId: "p1",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    createdAt: "2026-08-01T00:00:00.000Z",
+    updatedAt: "2026-08-01T00:00:00.000Z",
     avgRating: 4.9,
   },
   {
@@ -56,8 +56,8 @@ const DEMO_GEAR: GearItem[] = [
     categoryId: "2",
     category: { id: "2", name: "Cycling & Bikes" },
     providerId: "p1",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    createdAt: "2026-08-01T00:00:00.000Z",
+    updatedAt: "2026-08-01T00:00:00.000Z",
     avgRating: 4.8,
   },
   {
@@ -75,8 +75,8 @@ const DEMO_GEAR: GearItem[] = [
     categoryId: "3",
     category: { id: "3", name: "Water Sports" },
     providerId: "p2",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    createdAt: "2026-08-01T00:00:00.000Z",
+    updatedAt: "2026-08-01T00:00:00.000Z",
     avgRating: 5.0,
   },
   {
@@ -94,8 +94,8 @@ const DEMO_GEAR: GearItem[] = [
     categoryId: "4",
     category: { id: "4", name: "Winter Sports" },
     providerId: "p2",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    createdAt: "2026-08-01T00:00:00.000Z",
+    updatedAt: "2026-08-01T00:00:00.000Z",
     avgRating: 4.7,
   },
   {
@@ -113,8 +113,8 @@ const DEMO_GEAR: GearItem[] = [
     categoryId: "5",
     category: { id: "5", name: "Fitness & Gym" },
     providerId: "p3",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    createdAt: "2026-08-01T00:00:00.000Z",
+    updatedAt: "2026-08-01T00:00:00.000Z",
     avgRating: 4.9,
   },
   {
@@ -132,27 +132,33 @@ const DEMO_GEAR: GearItem[] = [
     categoryId: "1",
     category: { id: "1", name: "Camping & Hiking" },
     providerId: "p3",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    createdAt: "2026-08-01T00:00:00.000Z",
+    updatedAt: "2026-08-01T00:00:00.000Z",
     avgRating: 4.8,
   },
 ];
 
 export default function HomePage() {
   // TanStack React Query for Server State & Caching
-  const { data: gearList = [], isLoading: isGearLoading, isError: isGearError, error: gearError } = useQuery<GearItem[]>({
+  const { data: gearList = [], isLoading: isGearLoading } = useQuery<GearItem[]>({
     queryKey: ["gear-catalog"],
     queryFn: async () => {
-      const res = await apiClient.get("/gear");
-      return res.data?.data || [];
+      try {
+        const res = await apiClient.get("/gear");
+        if (res.data?.data && res.data.data.length > 0) return res.data.data;
+      } catch {}
+      return DEMO_GEAR;
     },
   });
 
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ["gear-categories"],
     queryFn: async () => {
-      const res = await apiClient.get("/categories");
-      return res.data?.data || [];
+      try {
+        const res = await apiClient.get("/categories");
+        if (res.data?.data && res.data.data.length > 0) return res.data.data;
+      } catch {}
+      return DEMO_CATEGORIES;
     },
   });
 

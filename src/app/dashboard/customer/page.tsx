@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -62,8 +63,8 @@ const DEMO_RENTALS: RentalOrder[] = [
         },
       },
     ],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    createdAt: "2026-08-01T00:00:00.000Z",
+    updatedAt: "2026-08-01T00:00:00.000Z",
   },
   {
     id: "ORD-871290",
@@ -98,8 +99,8 @@ const DEMO_RENTALS: RentalOrder[] = [
         },
       },
     ],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    createdAt: "2026-08-01T00:00:00.000Z",
+    updatedAt: "2026-08-01T00:00:00.000Z",
   },
 ];
 
@@ -110,9 +111,9 @@ const DEMO_PAYMENTS: Payment[] = [
     amount: 75,
     method: "Stripe",
     status: "COMPLETED",
-    paidAt: new Date().toISOString(),
+    paidAt: "2026-08-01T00:00:00.000Z",
     rentalOrderId: "ORD-982301",
-    createdAt: new Date().toISOString(),
+    createdAt: "2026-08-01T00:00:00.000Z",
   },
   {
     id: "PAY-002",
@@ -122,7 +123,7 @@ const DEMO_PAYMENTS: Payment[] = [
     status: "COMPLETED",
     paidAt: "2026-07-15T10:00:00Z",
     rentalOrderId: "ORD-871290",
-    createdAt: new Date().toISOString(),
+    createdAt: "2026-08-01T00:00:00.000Z",
   },
 ];
 
@@ -277,18 +278,20 @@ function CustomerDashboardContent() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "RETURNED":
-        return "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300";
-      case "PAID":
-      case "CONFIRMED":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300";
-      case "PICKED_UP":
-        return "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300";
-      case "CANCELLED":
-        return "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300";
       case "PLACED":
+        return "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-200";
+      case "CONFIRMED":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-200";
+      case "PAID":
+        return "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200";
+      case "PICKED_UP":
+        return "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200";
+      case "RETURNED":
+        return "bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-300 border border-zinc-200";
+      case "CANCELLED":
+        return "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-200";
       default:
-        return "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300";
+        return "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-200";
     }
   };
 
@@ -436,10 +439,19 @@ function CustomerDashboardContent() {
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3">
                           <span className="text-sm font-extrabold text-zinc-900 dark:text-white">
                             Total: ${order.totalAmount}
                           </span>
+
+                          {order.status === "CONFIRMED" && (
+                            <Link
+                              href={`/dashboard/customer/orders/${order.id}/pay`}
+                              className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow hover:bg-blue-500 transition-all"
+                            >
+                              <CreditCard className="h-3.5 w-3.5" /> Pay Now
+                            </Link>
+                          )}
 
                           {order.status === "RETURNED" && (
                             <button

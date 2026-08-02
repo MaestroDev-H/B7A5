@@ -29,6 +29,8 @@ function RegisterForm() {
   const searchParams = useSearchParams();
   const initialRole = (searchParams.get("role") as Role) || "CUSTOMER";
 
+  const from = searchParams.get("from");
+
   const { login } = useAuth();
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -70,9 +72,13 @@ function RegisterForm() {
         });
         if (loginRes.data?.data?.token) {
           login(loginRes.data.data.token, loginRes.data.data.user);
-          router.push(data.role === "PROVIDER" ? "/dashboard/provider" : "/dashboard/customer");
+          if (data.role === "CUSTOMER" && from) {
+            router.push(from);
+          } else {
+            router.push(data.role === "PROVIDER" ? "/dashboard/provider" : "/dashboard/customer");
+          }
         } else {
-          router.push("/login");
+          router.push(from ? `/login?from=${encodeURIComponent(from)}` : "/login");
         }
       }
     } catch (err: any) {
@@ -200,7 +206,10 @@ function RegisterForm() {
 
       <CardFooter className="justify-center border-t border-zinc-100 dark:border-zinc-800 pt-4 text-xs text-zinc-500">
         Already have an account?{" "}
-        <Link href="/login" className="font-extrabold text-emerald-600 hover:underline ml-1">
+        <Link
+          href={from ? `/login?from=${encodeURIComponent(from)}` : "/login"}
+          className="font-extrabold text-emerald-600 hover:underline ml-1"
+        >
           Sign in
         </Link>
       </CardFooter>

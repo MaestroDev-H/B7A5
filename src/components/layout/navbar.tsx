@@ -40,7 +40,7 @@ export const Navbar: React.FC = () => {
 
   const navLinks = [
     { label: "Home", href: "/" },
-    { label: "Browse Gear", href: "/#gear-catalog" },
+    { label: "Browse Gear", href: "/gear" },
     { label: "How It Works", href: "/#how-it-works" },
   ];
 
@@ -136,13 +136,21 @@ export const Navbar: React.FC = () => {
           ) : (
             <>
               <Link
-                href="/login"
+                href={
+                  pathname && !["/", "/login", "/register"].includes(pathname)
+                    ? `/login?from=${encodeURIComponent(pathname)}`
+                    : "/login"
+                }
                 className="rounded-xl px-4 py-2 text-xs font-bold text-zinc-700 hover:text-emerald-600 dark:text-zinc-300 dark:hover:text-emerald-400 transition-colors"
               >
                 Sign In
               </Link>
               <Link
-                href="/register"
+                href={
+                  pathname && !["/", "/login", "/register"].includes(pathname)
+                    ? `/register?from=${encodeURIComponent(pathname)}`
+                    : "/register"
+                }
                 className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-emerald-600/20 hover:bg-emerald-500 transition-all"
               >
                 Get Started
@@ -203,14 +211,22 @@ export const Navbar: React.FC = () => {
             ) : (
               <div className="flex flex-col gap-2">
                 <Link
-                  href="/login"
+                  href={
+                    pathname && !["/", "/login", "/register"].includes(pathname)
+                      ? `/login?from=${encodeURIComponent(pathname)}`
+                      : "/login"
+                  }
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="w-full text-center rounded-xl border border-zinc-200 py-2.5 text-xs font-bold text-zinc-800 dark:border-zinc-800 dark:text-zinc-200"
                 >
                   Sign In
                 </Link>
                 <Link
-                  href="/register"
+                  href={
+                    pathname && !["/", "/login", "/register"].includes(pathname)
+                      ? `/register?from=${encodeURIComponent(pathname)}`
+                      : "/register"
+                  }
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="w-full text-center rounded-xl bg-emerald-600 py-2.5 text-xs font-bold text-white shadow-md shadow-emerald-600/20"
                 >

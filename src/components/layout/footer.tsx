@@ -86,8 +86,8 @@ export const Footer: React.FC = () => {
           <h3 className="text-xs font-extrabold uppercase tracking-wider text-white">Support & Contact</h3>
           <ul className="mt-4 space-y-2.5 text-xs text-zinc-400">
             <li className="flex items-center gap-2"><Mail className="h-3.5 w-3.5 text-emerald-400" /> support@gearup-rentals.com</li>
-            <li className="flex items-center gap-2"><Phone className="h-3.5 w-3.5 text-emerald-400" /> +880 1700-000000</li>
-            <li className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-emerald-400" /> Gulshan, Dhaka, Bangladesh</li>
+            <li className="flex items-center gap-2"><Phone className="h-3.5 w-3.5 text-emerald-400" /> +880 1762-518411</li>
+            <li className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-emerald-400" /> Mirapara, Sylhet, Bangladesh</li>
           </ul>
         </div>
       </div>

@@ -50,8 +50,8 @@ const DEMO_PROVIDER_ORDERS: RentalOrder[] = [
         },
       },
     ],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    createdAt: "2026-08-01T00:00:00.000Z",
+    updatedAt: "2026-08-01T00:00:00.000Z",
   },
 ];
 
@@ -239,14 +239,18 @@ function ProviderOrdersContent() {
                   </span>
                 </div>
                 <span
-                  className={`rounded-full px-3 py-1 font-extrabold ${
-                    order.status === "CONFIRMED"
-                      ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300"
-                      : order.status === "CANCELLED"
-                      ? "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
+                  className={`rounded-full px-3 py-1 font-extrabold text-xs border ${
+                    order.status === "PLACED"
+                      ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-200"
+                      : order.status === "CONFIRMED"
+                      ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border-blue-200"
+                      : order.status === "PAID"
+                      ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border-purple-200"
+                      : order.status === "PICKED_UP"
+                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-200"
                       : order.status === "RETURNED"
-                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-                      : "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                      ? "bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-300 border-zinc-200"
+                      : "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border-rose-200"
                   }`}
                 >
                   Status: {order.status}

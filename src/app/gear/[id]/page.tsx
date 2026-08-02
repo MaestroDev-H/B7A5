@@ -46,8 +46,54 @@ export default function GearDetailsPage() {
     queryKey: ["gear-detail", gearId],
     queryFn: async () => {
       if (!gearId) return null;
-      const res = await apiClient.get(`/gear/${gearId}`);
-      return res.data?.data || null;
+      try {
+        const res = await apiClient.get(`/gear/${gearId}`);
+        if (res.data?.data) return res.data.data;
+      } catch {}
+
+      // Fallback demo gear list
+      const DEMO_GEAR_LIST: GearItem[] = [
+        {
+          id: "demo-1",
+          name: "Ultralight 3-Person Waterproof Tent",
+          description: "Full weather protection lightweight expedition tent with double vestibules for hiking.",
+          brand: "NorthFace",
+          pricePerDay: 25,
+          stock: 4,
+          isAvailable: true,
+          images: [
+            "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?auto=format&fit=crop&w=800&q=80",
+          ],
+          isDeleted: false,
+          categoryId: "1",
+          category: { id: "1", name: "Camping & Hiking" },
+          providerId: "p1",
+          createdAt: "2026-08-01T00:00:00.000Z",
+          updatedAt: "2026-08-01T00:00:00.000Z",
+          avgRating: 4.9,
+        },
+        {
+          id: "demo-2",
+          name: "Carbon Fiber Mountain Bike 29er",
+          description: "Full suspension hydraulic disc brakes aluminum mountain bike ready for high mountain trails.",
+          brand: "Trek",
+          pricePerDay: 45,
+          stock: 2,
+          isAvailable: true,
+          images: [
+            "https://images.unsplash.com/photo-1576435728678-68d0fbf94e91?auto=format&fit=crop&w=800&q=80",
+          ],
+          isDeleted: false,
+          categoryId: "2",
+          category: { id: "2", name: "Cycling & Bikes" },
+          providerId: "p1",
+          createdAt: "2026-08-01T00:00:00.000Z",
+          updatedAt: "2026-08-01T00:00:00.000Z",
+          avgRating: 4.8,
+        },
+      ];
+
+      return DEMO_GEAR_LIST.find((g) => g.id === gearId) || DEMO_GEAR_LIST[0];
     },
     enabled: !!gearId,
   });
@@ -70,11 +116,6 @@ export default function GearDetailsPage() {
   const totalPrice = (gear?.pricePerDay || 0) * totalDays * quantity;
 
   const handleProceedToCheckout = () => {
-    if (!user) {
-      router.push(`/login?from=/gear/${gearId}`);
-      return;
-    }
-
     const checkoutDraft = {
       gearItem: gear,
       startDate,
@@ -85,6 +126,12 @@ export default function GearDetailsPage() {
     };
 
     sessionStorage.setItem("gearup_checkout_draft", JSON.stringify(checkoutDraft));
+
+    if (!user) {
+      router.push("/login?from=/checkout");
+      return;
+    }
+
     router.push("/checkout");
   };
 

@@ -136,7 +136,10 @@ function LoginForm() {
 
       <CardFooter className="justify-center border-t border-zinc-100 dark:border-zinc-800 pt-4 text-xs text-zinc-500">
         Don't have an account?{" "}
-        <Link href="/register" className="font-extrabold text-emerald-600 hover:underline ml-1">
+        <Link
+          href={from && from !== "/dashboard" ? `/register?from=${encodeURIComponent(from)}` : "/register"}
+          className="font-extrabold text-emerald-600 hover:underline ml-1"
+        >
           Register now
         </Link>
       </CardFooter>
