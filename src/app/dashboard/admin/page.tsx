@@ -74,13 +74,23 @@ export default function AdminDashboardPage() {
     },
   });
 
-  // TanStack React Query Mutation: Toggle User Status
+  // TanStack React Query Mutation: Toggle User Status (Suspend / Activate)
   const toggleUserStatusMutation = useMutation({
     mutationFn: async ({ userId, nextStatus }: { userId: string; nextStatus: UserStatus }) => {
-      return apiClient.patch(`/admin/users/${userId}`, { status: nextStatus });
+      try {
+        return await apiClient.patch(`/admin/users/${userId}/status`, { status: nextStatus });
+      } catch {
+        return await apiClient.patch(`/admin/users/${userId}`, { status: nextStatus });
+      }
     },
-    onSuccess: () => {
+    onSuccess: (res, variables) => {
+      queryClient.setQueryData<User[]>(["admin-users"], (old = []) =>
+        old.map((u) => (u.id === variables.userId ? { ...u, status: variables.nextStatus } : u))
+      );
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    },
+    onError: (err: Error) => {
+      alert(`Failed to update user status: ${err.message}`);
     },
   });
 
