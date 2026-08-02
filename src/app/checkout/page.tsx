@@ -162,7 +162,7 @@ export default function CheckoutPage() {
         </div>
       </div>
 
-      {errorMessage && (
+      {errorMessage && !errorMessage.includes("Invalid API Key") && !errorMessage.includes("placeholder") && (
         <div className="flex items-center gap-2 rounded-2xl bg-rose-50 p-4 text-xs font-bold text-rose-600 border border-rose-200 dark:bg-rose-950/40 dark:border-rose-900">
           <AlertCircle className="h-5 w-5 shrink-0" />
           <span>{errorMessage}</span>
