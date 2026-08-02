@@ -8,11 +8,17 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-context";
 import { apiClient } from "@/lib/api-client";
 import { RentalOrder, Payment } from "@/types";
+import { RoleGuard } from "@/components/auth/role-guard";
+import { CustomerProfileForm } from "@/components/dashboard/customer-profile-form";
 import {
   CreditCard,
   Star,
   Package,
   MessageSquare,
+  User,
+  CheckCircle2,
+  Clock,
+  ShieldCheck,
 } from "lucide-react";
 
 const reviewSchema = z.object({
@@ -121,9 +127,18 @@ const DEMO_PAYMENTS: Payment[] = [
 ];
 
 export default function CustomerDashboardPage() {
+  return (
+    <RoleGuard allowedRoles={["CUSTOMER"]}>
+      <CustomerDashboardContent />
+    </RoleGuard>
+  );
+}
+
+function CustomerDashboardContent() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<"rentals" | "payments">("rentals");
+  const [activeTab, setActiveTab] = useState<"profile" | "rentals" | "payments">("rentals");
+  const [orderFilter, setOrderFilter] = useState<"ALL" | "ACTIVE" | "COMPLETED">("ALL");
 
   // Interactive Review Modal State
   const [selectedRentalItem, setSelectedRentalItem] = useState<any>(null);
@@ -147,7 +162,7 @@ export default function CustomerDashboardPage() {
   const selectedRating = watch("rating");
 
   // TanStack React Query: Customer Rentals Server State
-  const { data: rawRentals = [], isLoading: isRentalsLoading, isError: isRentalsError, error: rentalsError } = useQuery<RentalOrder[]>({
+  const { data: rawRentals = [], isLoading: isRentalsLoading } = useQuery<RentalOrder[]>({
     queryKey: ["customer-rentals", user?.id],
     queryFn: async () => {
       try {
@@ -157,10 +172,11 @@ export default function CustomerDashboardPage() {
         return [];
       }
     },
+    enabled: !!user,
   });
 
   // TanStack React Query: Customer Payments Server State
-  const { data: rawPayments = [], isLoading: isPaymentsLoading, isError: isPaymentsError, error: paymentsError } = useQuery<Payment[]>({
+  const { data: rawPayments = [] } = useQuery<Payment[]>({
     queryKey: ["customer-payments", user?.id],
     queryFn: async () => {
       try {
@@ -170,9 +186,10 @@ export default function CustomerDashboardPage() {
         return [];
       }
     },
+    enabled: !!user,
   });
 
-  // Combine Server + Local Storage + Fallback Demo Rentals
+  // Combine & Enforce Strict Customer Data Isolation: order.customerId === auth.user.id
   const rentals = React.useMemo(() => {
     let localRentals: RentalOrder[] = [];
     try {
@@ -185,21 +202,29 @@ export default function CustomerDashboardPage() {
     rawRentals.forEach((item) => combinedMap.set(item.id, item));
 
     const allRentals = Array.from(combinedMap.values());
-    if (!user) return allRentals;
+    if (!user) return [];
 
-    const filtered = allRentals.filter((order) => {
-      if (!order.customerId && !order.customer) return true;
-      return (
-        order.customerId === user.id ||
-        order.customer?.id === user.id ||
-        (user.email && order.customer?.email === user.email)
-      );
+    // STRICT CUSTOMER DATA ISOLATION GUARD: order.customerId === user.id
+    return allRentals.filter((order) => {
+      if (order.customerId && order.customerId === user.id) return true;
+      if (order.customer?.id && order.customer.id === user.id) return true;
+      if (user.email && order.customer?.email === user.email) return true;
+      return false;
     });
-
-    return filtered.length > 0 ? filtered : allRentals;
   }, [rawRentals, user]);
 
-  // Combine Server + Local Storage + Fallback Demo Payments
+  // Filter orders by active vs completed status
+  const filteredRentals = React.useMemo(() => {
+    if (orderFilter === "ACTIVE") {
+      return rentals.filter((r) => r.status === "PAID" || r.status === "CONFIRMED" || r.status === "PICKED_UP");
+    }
+    if (orderFilter === "COMPLETED") {
+      return rentals.filter((r) => r.status === "RETURNED" || r.status === "CANCELLED");
+    }
+    return rentals;
+  }, [rentals, orderFilter]);
+
+  // Combine & Filter Payments linked to customer orders
   const payments = React.useMemo(() => {
     let localPayments: Payment[] = [];
     try {
@@ -214,8 +239,7 @@ export default function CustomerDashboardPage() {
     const allPayments = Array.from(combinedMap.values());
     const customerOrderIds = new Set(rentals.map((r) => r.id));
 
-    const filtered = allPayments.filter((p) => !p.rentalOrderId || customerOrderIds.has(p.rentalOrderId));
-    return filtered.length > 0 ? filtered : allPayments;
+    return allPayments.filter((p) => !p.rentalOrderId || customerOrderIds.has(p.rentalOrderId));
   }, [rawPayments, rentals]);
 
   // TanStack React Query Mutation: Submit Review
@@ -248,23 +272,6 @@ export default function CustomerDashboardPage() {
 
   const handleReviewSubmit = (data: ReviewFormValues) => {
     if (!selectedRentalItem || !user) return;
-
-    // Ownership Guard
-    const parentOrder = rentals.find((r) =>
-      r.items.some((item) => item.id === selectedRentalItem.id)
-    );
-
-    if (
-      parentOrder &&
-      parentOrder.customerId &&
-      parentOrder.customerId !== user.id &&
-      parentOrder.customer?.id !== user.id &&
-      parentOrder.customer?.email !== user.email
-    ) {
-      alert("Unauthorized: You can only submit reviews for equipment you rented.");
-      return;
-    }
-
     reviewMutation.mutate(data);
   };
 
@@ -287,53 +294,115 @@ export default function CustomerDashboardPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 space-y-8">
+      {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200 pb-6 dark:border-zinc-800">
         <div>
-          <h1 className="text-3xl font-extrabold text-zinc-900 dark:text-white">
-            Customer Rental Dashboard
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-3xl font-extrabold text-zinc-900 dark:text-white">
+              Customer Dashboard
+            </h1>
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+              Customer Role
+            </span>
+          </div>
           <p className="text-xs text-zinc-500 mt-1">
-            Welcome back, <strong className="text-zinc-800 dark:text-zinc-200">{user?.name || "Customer"}</strong>! Track rentals & leave equipment reviews.
+            Welcome back, <strong className="text-zinc-800 dark:text-zinc-200">{user?.name || "Customer"}</strong>! Manage your profile settings, view active orders & submit gear reviews.
           </p>
         </div>
 
-        <div className="flex gap-2 rounded-2xl bg-zinc-100 p-1 dark:bg-zinc-900">
+        {/* Tab Switcher */}
+        <div className="flex flex-wrap gap-2 rounded-2xl bg-zinc-100 p-1 dark:bg-zinc-900">
           <button
             onClick={() => setActiveTab("rentals")}
-            className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all ${
+            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
               activeTab === "rentals"
                 ? "bg-white text-emerald-600 shadow-sm dark:bg-zinc-800 dark:text-emerald-400"
                 : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
             }`}
           >
-            <Package className="h-4 w-4" /> My Rental Orders ({rentals.length})
+            <Package className="h-4 w-4" /> My Orders ({rentals.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("profile")}
+            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+              activeTab === "profile"
+                ? "bg-white text-emerald-600 shadow-sm dark:bg-zinc-800 dark:text-emerald-400"
+                : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+            }`}
+          >
+            <User className="h-4 w-4" /> Profile & Settings
           </button>
           <button
             onClick={() => setActiveTab("payments")}
-            className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all ${
+            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
               activeTab === "payments"
                 ? "bg-white text-emerald-600 shadow-sm dark:bg-zinc-800 dark:text-emerald-400"
                 : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
             }`}
           >
-            <CreditCard className="h-4 w-4" /> Payment History ({payments.length})
+            <CreditCard className="h-4 w-4" /> Payments ({payments.length})
           </button>
         </div>
       </div>
 
+      {/* Profile Settings Tab */}
+      {activeTab === "profile" && <CustomerProfileForm />}
+
+      {/* My Rental Orders Tab */}
       {activeTab === "rentals" && (
         <div className="space-y-6">
-          {rentals.length === 0 ? (
+          {/* Status Filter Buttons */}
+          <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-4">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setOrderFilter("ALL")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                  orderFilter === "ALL"
+                    ? "bg-emerald-600 text-white"
+                    : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+                }`}
+              >
+                All Orders ({rentals.length})
+              </button>
+              <button
+                onClick={() => setOrderFilter("ACTIVE")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                  orderFilter === "ACTIVE"
+                    ? "bg-emerald-600 text-white"
+                    : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+                }`}
+              >
+                Active Rentals
+              </button>
+              <button
+                onClick={() => setOrderFilter("COMPLETED")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                  orderFilter === "COMPLETED"
+                    ? "bg-emerald-600 text-white"
+                    : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+                }`}
+              >
+                Completed & Returned
+              </button>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+              <ShieldCheck className="w-4 h-4" />
+              <span>Strict Data Isolation Active</span>
+            </div>
+          </div>
+
+          {filteredRentals.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-zinc-300 p-12 text-center dark:border-zinc-800">
               <Package className="h-10 w-10 text-zinc-400 mx-auto mb-2" />
-              <p className="text-sm font-bold text-zinc-700 dark:text-zinc-300">No rental orders placed yet</p>
+              <p className="text-sm font-bold text-zinc-700 dark:text-zinc-300">No rental orders matching filter</p>
+              <p className="text-xs text-zinc-400 mt-1">Browse gear catalog to start a new gear rental.</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {rentals.map((order) => (
+              {filteredRentals.map((order) => (
                 <div
                   key={order.id}
-                  className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 space-y-4"
+                  className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 space-y-4 hover:border-emerald-500/40 transition"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-100 pb-4 dark:border-zinc-800 text-xs">
                     <div className="flex items-center gap-3">
@@ -344,29 +413,32 @@ export default function CustomerDashboardPage() {
                         {order.status}
                       </span>
                     </div>
-                    <div className="text-zinc-400 font-medium">
-                      Rental Dates: <strong className="text-zinc-700 dark:text-zinc-300">{order.startDate} → {order.endDate}</strong>
+                    <div className="text-zinc-400 font-medium flex items-center gap-2">
+                      <Clock className="w-3.5 h-3.5" />
+                      Rental Period: <strong className="text-zinc-700 dark:text-zinc-300">{order.startDate} → {order.endDate}</strong>
                     </div>
                   </div>
 
                   <div className="space-y-3">
                     {order.items.map((item) => (
-                      <div key={item.id} className="flex items-center justify-between gap-4">
+                      <div key={item.id} className="flex flex-wrap items-center justify-between gap-4">
                         <div className="flex items-center gap-3">
-                          <div className="h-12 w-12 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-emerald-600 font-bold">
+                          <div className="h-12 w-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-600 font-bold">
                             <Package className="h-6 w-6" />
                           </div>
                           <div>
                             <h4 className="text-sm font-bold text-zinc-900 dark:text-white">
                               {item.gearItem?.name || "Equipment Rental"}
                             </h4>
-                            <p className="text-xs text-zinc-500">Brand: {item.gearItem?.brand || "GearUp"}</p>
+                            <p className="text-xs text-zinc-500">
+                              Brand: {item.gearItem?.brand || "GearUp"} • Daily Rate: ${item.pricePerDay || item.gearItem?.pricePerDay}
+                            </p>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-4">
                           <span className="text-sm font-extrabold text-zinc-900 dark:text-white">
-                            ${order.totalAmount}
+                            Total: ${order.totalAmount}
                           </span>
 
                           {order.status === "RETURNED" && (
@@ -391,6 +463,7 @@ export default function CustomerDashboardPage() {
         </div>
       )}
 
+      {/* Payment Transactions Tab */}
       {activeTab === "payments" && (
         <div className="overflow-x-auto rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <table className="w-full text-left text-xs whitespace-nowrap">
@@ -398,31 +471,39 @@ export default function CustomerDashboardPage() {
               <tr>
                 <th className="p-4">Transaction ID</th>
                 <th className="p-4">Order Ref</th>
-                <th className="p-4">Gateway</th>
+                <th className="p-4">Payment Method</th>
                 <th className="p-4">Amount</th>
                 <th className="p-4">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 text-zinc-700 dark:text-zinc-300">
-              {payments.map((p) => (
-                <tr key={p.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/50">
-                  <td className="p-4 font-mono font-bold text-zinc-900 dark:text-white">{p.transactionId}</td>
-                  <td className="p-4 font-semibold">{p.rentalOrderId}</td>
-                  <td className="p-4 font-bold text-emerald-600">{p.method}</td>
-                  <td className="p-4 font-extrabold text-zinc-900 dark:text-white text-sm">${p.amount}</td>
-                  <td className="p-4">
-                    <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                      {p.status}
-                    </span>
+              {payments.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="p-8 text-center text-zinc-400">
+                    No payment history recorded yet.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                payments.map((p) => (
+                  <tr key={p.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/50">
+                    <td className="p-4 font-mono font-bold text-zinc-900 dark:text-white">{p.transactionId}</td>
+                    <td className="p-4 font-semibold">{p.rentalOrderId}</td>
+                    <td className="p-4 font-bold text-emerald-600">{p.method}</td>
+                    <td className="p-4 font-extrabold text-zinc-900 dark:text-white text-sm">${p.amount}</td>
+                    <td className="p-4">
+                      <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                        {p.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       )}
 
-      {/* Interactive Review Modal Component */}
+      {/* Review Dialog Modal */}
       {selectedRentalItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="w-full max-w-md space-y-4 rounded-3xl border border-zinc-200 bg-white p-6 shadow-2xl dark:border-zinc-800 dark:bg-zinc-900">
@@ -432,7 +513,7 @@ export default function CustomerDashboardPage() {
               </h3>
               <button
                 onClick={() => setSelectedRentalItem(null)}
-                className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+                className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white text-sm font-bold"
               >
                 ✕
               </button>

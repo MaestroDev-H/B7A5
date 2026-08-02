@@ -3,12 +3,41 @@ export type UserStatus = "ACTIVE" | "SUSPENDED";
 export type RentalStatus = "PLACED" | "CONFIRMED" | "PAID" | "PICKED_UP" | "RETURNED" | "CANCELLED";
 export type PaymentStatus = "PENDING" | "COMPLETED" | "FAILED";
 
+export interface CustomerProfile {
+  id?: string;
+  userId?: string;
+  phone?: string;
+  address?: string;
+  avatarUrl?: string;
+  emergencyContact?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ProviderProfile {
+  id?: string;
+  userId?: string;
+  businessName?: string;
+  businessPhone?: string;
+  businessAddress?: string;
+  taxId?: string;
+  bio?: string;
+  logoUrl?: string;
+  isVerified?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface User {
   id: string;
   name: string;
   email: string;
   role: Role;
   status: UserStatus;
+  phone?: string;
+  avatarUrl?: string;
+  customerProfile?: CustomerProfile;
+  providerProfile?: ProviderProfile;
   createdAt: string;
   updatedAt: string;
 }

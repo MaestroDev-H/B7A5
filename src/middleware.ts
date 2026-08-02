@@ -23,7 +23,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(targetDashboard, request.url));
   }
 
-  // 3. Role-based Dashboard Route Protection
+  // 3. Role-based Dashboard Route Protection & Isolation Guarantee
   if (token && role) {
     if (pathname.startsWith("/dashboard/admin") && role !== "ADMIN") {
       const fallback = role === "PROVIDER" ? "/dashboard/provider" : "/dashboard/customer";
@@ -31,6 +31,9 @@ export function middleware(request: NextRequest) {
     }
     if (pathname.startsWith("/dashboard/provider") && role !== "PROVIDER" && role !== "ADMIN") {
       return NextResponse.redirect(new URL("/dashboard/customer", request.url));
+    }
+    if (pathname.startsWith("/dashboard/customer") && role !== "CUSTOMER" && role !== "ADMIN") {
+      return NextResponse.redirect(new URL("/dashboard/provider", request.url));
     }
   }
 

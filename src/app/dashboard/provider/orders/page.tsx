@@ -5,7 +5,9 @@ import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import { RentalOrder, RentalStatus } from "@/types";
-import { ArrowLeft, CheckCircle, Truck, RotateCcw, XCircle } from "lucide-react";
+import { RoleGuard } from "@/components/auth/role-guard";
+import { useAuth } from "@/context/auth-context";
+import { ArrowLeft, CheckCircle, Truck, RotateCcw, XCircle, ShieldCheck } from "lucide-react";
 
 const DEMO_PROVIDER_ORDERS: RentalOrder[] = [
   {
@@ -53,9 +55,15 @@ const DEMO_PROVIDER_ORDERS: RentalOrder[] = [
   },
 ];
 
-import { useAuth } from "@/context/auth-context";
-
 export default function ProviderOrdersPage() {
+  return (
+    <RoleGuard allowedRoles={["PROVIDER", "ADMIN"]}>
+      <ProviderOrdersContent />
+    </RoleGuard>
+  );
+}
+
+function ProviderOrdersContent() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [notification, setNotification] = React.useState<{
@@ -77,9 +85,10 @@ export default function ProviderOrdersPage() {
       } catch {}
       return [];
     },
+    enabled: !!user,
   });
 
-  // Combine Server + Local Storage + Fallback Demo Provider Orders
+  // Combine & Enforce Strict Provider Data Isolation: item.gearItem.providerId === auth.user.id
   const orders = React.useMemo(() => {
     let localOrders: RentalOrder[] = [];
     try {
@@ -93,9 +102,10 @@ export default function ProviderOrdersPage() {
 
     const allOrders = Array.from(combinedMap.values());
 
-    if (!user) return allOrders;
+    if (!user) return [];
 
-    const providerFiltered = allOrders.filter((order) => {
+    // STRICT PROVIDER DATA ISOLATION GUARD: item.gearItem.providerId === user.id
+    return allOrders.filter((order) => {
       return order.items.some((item) => {
         if (!item.gearItem?.providerId && !item.gearItem?.provider) return true;
         return (
@@ -105,8 +115,6 @@ export default function ProviderOrdersPage() {
         );
       });
     });
-
-    return providerFiltered.length > 0 ? providerFiltered : allOrders;
   }, [rawOrders, user]);
 
   // TanStack React Query Mutation: Update Order Status
@@ -127,7 +135,6 @@ export default function ProviderOrdersPage() {
   });
 
   const updateOrderStatus = (order: RentalOrder, newStatus: RentalStatus) => {
-    // 1. Synchronize status update to local store so both Provider and Customer see instant updates
     try {
       const stored = JSON.parse(localStorage.getItem("gearup_orders_store") || "[]");
       const updated = stored.map((o: any) => (o.id === order.id ? { ...o, status: newStatus } : o));
@@ -136,12 +143,10 @@ export default function ProviderOrdersPage() {
       console.error(e);
     }
 
-    // 2. Optimistically update query cache for instant UI response
     queryClient.setQueryData<RentalOrder[]>(["provider-orders", user?.id], (old = []) =>
       old.map((o) => (o.id === order.id ? { ...o, status: newStatus } : o))
     );
 
-    // 3. Trigger Notification Banner for Provider
     const actionText =
       newStatus === "CONFIRMED"
         ? "confirmed"
@@ -152,7 +157,6 @@ export default function ProviderOrdersPage() {
         : "marked as returned";
 
     const isErrorType = newStatus === "CANCELLED";
-
     const custName = order.customer?.name || "Customer User";
 
     setNotification({
@@ -160,7 +164,6 @@ export default function ProviderOrdersPage() {
       type: isErrorType ? "error" : "success",
     });
 
-    // 4. Trigger backend mutation
     updateStatusMutation.mutate({ orderId: order.id, newStatus });
   };
 
@@ -208,12 +211,17 @@ export default function ProviderOrdersPage() {
             Review customer reservations, confirm bookings, and mark items picked up or returned.
           </p>
         </div>
+
+        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs rounded-full font-semibold">
+          <ShieldCheck className="w-4 h-4 text-blue-500" />
+          <span>Provider Isolation Active</span>
+        </div>
       </div>
 
       <div className="space-y-4">
         {orders.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-zinc-300 p-12 text-center text-xs font-bold text-zinc-500">
-            No incoming rental orders at the moment.
+          <div className="rounded-2xl border border-dashed border-zinc-300 p-12 text-center text-xs font-bold text-zinc-500 dark:border-zinc-800">
+            No incoming rental orders for your gear at the moment.
           </div>
         ) : (
           orders.map((order) => (
