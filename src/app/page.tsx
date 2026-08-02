@@ -172,6 +172,9 @@ export default function HomePage() {
 
   const filteredGear = useMemo(() => {
     return gearList.filter((item) => {
+      // Hide gear if the provider account is suspended
+      if (item.provider?.status === "SUSPENDED") return false;
+
       const matchesQuery =
         item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.description.toLowerCase().includes(searchQuery.toLowerCase());
