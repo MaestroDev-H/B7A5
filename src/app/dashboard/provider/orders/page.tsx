@@ -14,11 +14,11 @@ const DEMO_PROVIDER_ORDERS: RentalOrder[] = [
     endDate: "2026-08-04",
     totalAmount: 75,
     status: "PLACED",
-    customerId: "cust-1",
+    customerId: "cust-101",
     customer: {
-      id: "cust-1",
-      name: "Habibur Rahman",
-      email: "habibur@example.com",
+      id: "cust-101",
+      name: "Sarah Jenkins",
+      email: "sarah.jenkins@example.com",
       role: "CUSTOMER",
       status: "ACTIVE",
       createdAt: "",
@@ -153,7 +153,7 @@ export default function ProviderOrdersPage() {
 
     const isErrorType = newStatus === "CANCELLED";
 
-    const custName = order.customer?.name || user?.name || "Habibur Rahman";
+    const custName = order.customer?.name || "Customer User";
 
     setNotification({
       message: `Order #${order.id} has been ${actionText}! Notification sent to customer ${custName}.`,
@@ -227,7 +227,7 @@ export default function ProviderOrdersPage() {
                     Order #{order.id}
                   </span>
                   <span className="ml-3 text-zinc-400 font-medium">
-                    Customer: <strong className="text-zinc-700 dark:text-zinc-300">{order.customer?.name || user?.name || "Habibur Rahman"} ({order.customer?.email || user?.email || "habibur@example.com"})</strong>
+                    Customer: <strong className="text-zinc-700 dark:text-zinc-300">{order.customer?.name || "Customer User"} ({order.customer?.email || "customer@example.com"})</strong>
                   </span>
                 </div>
                 <span
