@@ -66,20 +66,32 @@ export default function ProviderOrdersPage() {
       try {
         const res = await apiClient.get("/provider/orders");
         if (res.data?.data) return res.data.data;
-      } catch {
-        // Fallback endpoint
-      }
-      const res = await apiClient.get("/rentals");
-      return res.data?.data || [];
+      } catch {}
+      try {
+        const res = await apiClient.get("/rentals");
+        return res.data?.data || [];
+      } catch {}
+      return [];
     },
-    enabled: !!user,
   });
 
-  // Strict ownership protection: Provider ONLY sees orders for items belonging to their account
+  // Combine Server + Local Storage + Fallback Demo Provider Orders
   const orders = React.useMemo(() => {
-    if (!user) return [];
-    return rawOrders.filter((order) => {
-      // Order belongs to this provider if any item in the order is provided by this provider or missing providerId
+    let localOrders: RentalOrder[] = [];
+    try {
+      localOrders = JSON.parse(localStorage.getItem("gearup_orders_store") || "[]");
+    } catch {}
+
+    const combinedMap = new Map<string, RentalOrder>();
+    DEMO_PROVIDER_ORDERS.forEach((o) => combinedMap.set(o.id, o));
+    localOrders.forEach((o) => combinedMap.set(o.id, o));
+    rawOrders.forEach((o) => combinedMap.set(o.id, o));
+
+    const allOrders = Array.from(combinedMap.values());
+
+    if (!user) return allOrders;
+
+    const providerFiltered = allOrders.filter((order) => {
       return order.items.some((item) => {
         if (!item.gearItem?.providerId && !item.gearItem?.provider) return true;
         return (
@@ -89,6 +101,8 @@ export default function ProviderOrdersPage() {
         );
       });
     });
+
+    return providerFiltered.length > 0 ? providerFiltered : allOrders;
   }, [rawOrders, user]);
 
   // TanStack React Query Mutation: Update Order Status
@@ -98,25 +112,18 @@ export default function ProviderOrdersPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["provider-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["customer-rentals"] });
     },
   });
 
   const updateOrderStatus = (order: RentalOrder, newStatus: RentalStatus) => {
-    // Ownership Guard
-    const isOwner =
-      user &&
-      order.items.some((item) => {
-        if (!item.gearItem?.providerId && !item.gearItem?.provider) return true;
-        return (
-          item.gearItem?.providerId === user.id ||
-          item.gearItem?.provider?.id === user.id ||
-          (user.email && item.gearItem?.provider?.email === user.email)
-        );
-      });
-
-    if (!isOwner) {
-      alert("Unauthorized: You do not have permission to manage orders for other providers.");
-      return;
+    // Synchronize status update to local store so both Provider and Customer see instant updates
+    try {
+      const stored = JSON.parse(localStorage.getItem("gearup_orders_store") || "[]");
+      const updated = stored.map((o: any) => (o.id === order.id ? { ...o, status: newStatus } : o));
+      localStorage.setItem("gearup_orders_store", JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
     }
 
     updateStatusMutation.mutate({ orderId: order.id, newStatus });

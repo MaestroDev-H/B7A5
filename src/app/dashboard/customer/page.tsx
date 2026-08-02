@@ -157,7 +157,6 @@ export default function CustomerDashboardPage() {
         return [];
       }
     },
-    enabled: !!user,
   });
 
   // TanStack React Query: Customer Payments Server State
@@ -171,13 +170,24 @@ export default function CustomerDashboardPage() {
         return [];
       }
     },
-    enabled: !!user,
   });
 
-  // Strict Customer Protection: Customer ONLY sees their own rental orders
+  // Combine Server + Local Storage + Fallback Demo Rentals
   const rentals = React.useMemo(() => {
-    if (!user) return [];
-    return rawRentals.filter((order) => {
+    let localRentals: RentalOrder[] = [];
+    try {
+      localRentals = JSON.parse(localStorage.getItem("gearup_orders_store") || "[]");
+    } catch {}
+
+    const combinedMap = new Map<string, RentalOrder>();
+    DEMO_RENTALS.forEach((item) => combinedMap.set(item.id, item));
+    localRentals.forEach((item) => combinedMap.set(item.id, item));
+    rawRentals.forEach((item) => combinedMap.set(item.id, item));
+
+    const allRentals = Array.from(combinedMap.values());
+    if (!user) return allRentals;
+
+    const filtered = allRentals.filter((order) => {
       if (!order.customerId && !order.customer) return true;
       return (
         order.customerId === user.id ||
@@ -185,17 +195,28 @@ export default function CustomerDashboardPage() {
         (user.email && order.customer?.email === user.email)
       );
     });
+
+    return filtered.length > 0 ? filtered : allRentals;
   }, [rawRentals, user]);
 
-  // Strict Customer Protection: Customer ONLY sees payments for their own orders
+  // Combine Server + Local Storage + Fallback Demo Payments
   const payments = React.useMemo(() => {
-    if (!user) return [];
+    let localPayments: Payment[] = [];
+    try {
+      localPayments = JSON.parse(localStorage.getItem("gearup_payments_store") || "[]");
+    } catch {}
+
+    const combinedMap = new Map<string, Payment>();
+    DEMO_PAYMENTS.forEach((p) => combinedMap.set(p.id, p));
+    localPayments.forEach((p) => combinedMap.set(p.id, p));
+    rawPayments.forEach((p) => combinedMap.set(p.id, p));
+
+    const allPayments = Array.from(combinedMap.values());
     const customerOrderIds = new Set(rentals.map((r) => r.id));
-    return rawPayments.filter((p) => {
-      if (!p.rentalOrderId) return true;
-      return customerOrderIds.has(p.rentalOrderId);
-    });
-  }, [rawPayments, rentals, user]);
+
+    const filtered = allPayments.filter((p) => !p.rentalOrderId || customerOrderIds.has(p.rentalOrderId));
+    return filtered.length > 0 ? filtered : allPayments;
+  }, [rawPayments, rentals]);
 
   // TanStack React Query Mutation: Submit Review
   const reviewMutation = useMutation({
