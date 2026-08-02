@@ -199,51 +199,22 @@ export default function CheckoutPage() {
           {!paymentData ? (
             <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 space-y-6">
               <h3 className="text-base font-extrabold text-zinc-900 dark:text-white flex items-center gap-2">
-                <CreditCard className="h-5 w-5 text-emerald-500" /> Select Payment Method
+                <CreditCard className="h-5 w-5 text-emerald-500" /> Payment Gateway
               </h3>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod("stripe")}
-                  className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all ${
-                    paymentMethod === "stripe"
-                      ? "border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300 shadow-md"
-                      : "border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300"
-                  }`}
-                >
-                  <CreditCard className="h-6 w-6 mb-2" />
-                  <span className="text-xs font-bold">Stripe Card</span>
-                  <span className="text-[10px] text-zinc-400 font-medium mt-0.5">Instant Card Payment</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod("sslcommerz")}
-                  className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all ${
-                    paymentMethod === "sslcommerz"
-                      ? "border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300 shadow-md"
-                      : "border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300"
-                  }`}
-                >
-                  <Lock className="h-6 w-6 mb-2" />
-                  <span className="text-xs font-bold">SSLCommerz</span>
-                  <span className="text-[10px] text-zinc-400 font-medium mt-0.5">Mobile Banking / BKash</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod("cash")}
-                  className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all ${
-                    paymentMethod === "cash"
-                      ? "border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300 shadow-md"
-                      : "border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300"
-                  }`}
-                >
-                  <CheckCircle2 className="h-6 w-6 mb-2" />
-                  <span className="text-xs font-bold">Pay on Pickup</span>
-                  <span className="text-[10px] text-zinc-400 font-medium mt-0.5">Cash / Local Vendor</span>
-                </button>
+              <div className="rounded-2xl border-2 border-emerald-600 bg-emerald-50/40 p-5 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-300 shadow-sm flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-md">
+                    <CreditCard className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-extrabold text-zinc-900 dark:text-white">Stripe Secured Card Payment</h4>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">Visa, Mastercard, AMEX, Discover (256-bit SSL Encrypted)</p>
+                  </div>
+                </div>
+                <span className="rounded-full bg-emerald-600 px-3 py-1 text-[11px] font-extrabold text-white shadow">
+                  Active
+                </span>
               </div>
 
               <button
@@ -251,7 +222,7 @@ export default function CheckoutPage() {
                 disabled={isSubmitting}
                 className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3.5 text-xs sm:text-sm font-extrabold text-white shadow-lg shadow-emerald-600/30 hover:bg-emerald-500 disabled:opacity-50 transition-all"
               >
-                {isSubmitting ? "Initializing Payment Session..." : `Proceed with ${paymentMethod.toUpperCase()} Payment`}
+                {isSubmitting ? "Initializing Stripe Session..." : "Proceed with Stripe Payment"}
               </button>
             </div>
           ) : (

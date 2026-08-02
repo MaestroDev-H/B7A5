@@ -111,19 +111,22 @@ export function StripeCheckoutForm({
         </div>
       )}
 
-      <div className="rounded-xl border border-zinc-200 bg-white p-3.5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="rounded-xl border border-zinc-700 bg-zinc-900 p-4 shadow-md">
         <CardElement
           options={{
             style: {
               base: {
-                fontSize: "14px",
-                color: "#18181b",
+                fontSize: "15px",
+                fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+                color: "#ffffff",
+                iconColor: "#10b981",
                 "::placeholder": {
-                  color: "#a1a1aa",
+                  color: "#9ca3af",
                 },
               },
               invalid: {
-                color: "#ef4444",
+                color: "#f87171",
+                iconColor: "#f87171",
               },
             },
           }}
