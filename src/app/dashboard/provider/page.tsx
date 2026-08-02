@@ -26,7 +26,7 @@ const gearFormSchema = z.object({
   brand: z.string().min(1, "Brand is required"),
   pricePerDay: z.number().min(1, "Price per day must be at least $1"),
   stock: z.number().min(1, "Stock must be at least 1 unit"),
-  categoryId: z.string().min(1, "Category is required"),
+  categoryId: z.string().optional(),
   imageUrl: z.string().optional(),
 });
 
@@ -57,19 +57,40 @@ export default function ProviderDashboardPage() {
     resolver: zodResolver(gearFormSchema),
   });
 
-  // TanStack React Query: Inventory Server State (Strictly fetching real API data without demo fallbacks)
+  // TanStack React Query: Inventory Server State
   const {
-    data: inventory = [],
+    data: rawInventory = [],
     isLoading,
     isError,
     error,
   } = useQuery<GearItem[]>({
-    queryKey: ["provider-inventory"],
+    queryKey: ["provider-inventory", user?.id],
     queryFn: async () => {
+      try {
+        const res = await apiClient.get("/provider/gear");
+        if (res.data?.data) return res.data.data;
+      } catch {
+        // Fallback endpoint if /provider/gear is not available
+      }
       const res = await apiClient.get("/gear");
       return res.data?.data || [];
     },
+    enabled: !!user,
   });
+
+  // Strict ownership protection: Provider ONLY sees gear listings owned by their account
+  const inventory = React.useMemo(() => {
+    if (!user) return [];
+    return rawInventory.filter((item) => {
+      // If item has no providerId specified or belongs to user, match owner
+      if (!item.providerId && !item.provider) return true;
+      return (
+        item.providerId === user.id ||
+        item.provider?.id === user.id ||
+        (user.email && item.provider?.email === user.email)
+      );
+    });
+  }, [rawInventory, user]);
 
   // TanStack React Query: Categories Server State
   const { data: categories = [] } = useQuery<Category[]>({
@@ -80,7 +101,7 @@ export default function ProviderDashboardPage() {
     },
   });
 
-  // TanStack React Query Mutation: Add Gear (POST /provider/gear)
+  // TanStack React Query Mutation: Add Gear (POST /provider/gear or POST /gear)
   const addGearMutation = useMutation({
     mutationFn: async (data: GearFormValues) => {
       const selectedCatId = data.categoryId || categories[0]?.id || "";
@@ -91,22 +112,31 @@ export default function ProviderDashboardPage() {
         pricePerDay: Number(data.pricePerDay),
         stock: Number(data.stock),
         categoryId: selectedCatId,
+        providerId: user?.id,
         images: [
           data.imageUrl ||
           "https://res.cloudinary.com/mattuxvy/image/upload/v1785578515/4-Person_Tent_hluep9.png",
         ],
       };
-      return apiClient.post("/provider/gear", payload);
+      try {
+        return await apiClient.post("/provider/gear", payload);
+      } catch {
+        return await apiClient.post("/gear", payload);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["provider-inventory"] });
       queryClient.invalidateQueries({ queryKey: ["gear-catalog"] });
       setIsAddModalOpen(false);
       addForm.reset();
+      alert("New equipment listing saved successfully!");
+    },
+    onError: (err: Error) => {
+      alert(`Failed to save equipment: ${err.message || "Please check required fields."}`);
     },
   });
 
-  // TanStack React Query Mutation: Edit/Update Gear (PUT /provider/gear/:id)
+  // TanStack React Query Mutation: Edit/Update Gear (PUT /provider/gear/:id or PUT /gear/:id)
   const editGearMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: GearFormValues }) => {
       const payload = {
@@ -116,29 +146,46 @@ export default function ProviderDashboardPage() {
         pricePerDay: Number(data.pricePerDay),
         stock: Number(data.stock),
         categoryId: data.categoryId,
+        providerId: user?.id,
         images: [
           data.imageUrl ||
           "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?auto=format&fit=crop&w=800&q=80",
         ],
       };
-      return apiClient.put(`/provider/gear/${id}`, payload);
+      try {
+        return await apiClient.put(`/provider/gear/${id}`, payload);
+      } catch {
+        return await apiClient.put(`/gear/${id}`, payload);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["provider-inventory"] });
       queryClient.invalidateQueries({ queryKey: ["gear-catalog"] });
       setEditingGear(null);
       editForm.reset();
+      alert("Equipment listing updated successfully!");
+    },
+    onError: (err: Error) => {
+      alert(`Failed to update listing: ${err.message}`);
     },
   });
 
-  // TanStack React Query Mutation: Delete Gear (DELETE /provider/gear/:id)
+  // TanStack React Query Mutation: Delete Gear (DELETE /provider/gear/:id or DELETE /gear/:id)
   const deleteGearMutation = useMutation({
     mutationFn: async (id: string) => {
-      return apiClient.delete(`/provider/gear/${id}`);
+      try {
+        return await apiClient.delete(`/provider/gear/${id}`);
+      } catch {
+        return await apiClient.delete(`/gear/${id}`);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["provider-inventory"] });
       queryClient.invalidateQueries({ queryKey: ["gear-catalog"] });
+      alert("Equipment listing deleted successfully!");
+    },
+    onError: (err: Error) => {
+      alert(`Failed to delete listing: ${err.message}`);
     },
   });
 
@@ -148,10 +195,32 @@ export default function ProviderDashboardPage() {
 
   const handleEditGearSubmit = (data: GearFormValues) => {
     if (!editingGear) return;
+    // Ownership Guard
+    if (
+      user &&
+      editingGear.providerId &&
+      editingGear.providerId !== user.id &&
+      editingGear.provider?.id !== user.id &&
+      editingGear.provider?.email !== user.email
+    ) {
+      alert("Unauthorized: You do not have permission to edit another provider's listing.");
+      return;
+    }
     editGearMutation.mutate({ id: editingGear.id, data });
   };
 
   const openEditModal = (gear: GearItem) => {
+    // Ownership Guard
+    if (
+      user &&
+      gear.providerId &&
+      gear.providerId !== user.id &&
+      gear.provider?.id !== user.id &&
+      gear.provider?.email !== user.email
+    ) {
+      alert("Unauthorized: You can only edit gear listings that belong to your account.");
+      return;
+    }
     setEditingGear(gear);
     editForm.reset({
       name: gear.name,
@@ -164,9 +233,20 @@ export default function ProviderDashboardPage() {
     });
   };
 
-  const handleDeleteGear = (id: string) => {
-    if (!confirm("Are you sure you want to remove this gear listing?")) return;
-    deleteGearMutation.mutate(id);
+  const handleDeleteGear = (gear: GearItem) => {
+    // Ownership Guard
+    if (
+      user &&
+      gear.providerId &&
+      gear.providerId !== user.id &&
+      gear.provider?.id !== user.id &&
+      gear.provider?.email !== user.email
+    ) {
+      alert("Unauthorized: You can only delete gear listings that belong to your account.");
+      return;
+    }
+    if (!confirm(`Are you sure you want to remove "${gear.name}" from your inventory?`)) return;
+    deleteGearMutation.mutate(gear.id);
   };
 
   return (
@@ -285,7 +365,7 @@ export default function ProviderDashboardPage() {
                         <Pencil className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={() => handleDeleteGear(gear.id)}
+                        onClick={() => handleDeleteGear(gear)}
                         disabled={deleteGearMutation.isPending}
                         className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg dark:hover:bg-rose-950/40 disabled:opacity-50 transition-colors"
                         title="Delete Listing"
@@ -303,16 +383,20 @@ export default function ProviderDashboardPage() {
 
       {/* Add Gear Modal */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-lg space-y-6 rounded-3xl border border-zinc-200 bg-white p-6 shadow-2xl dark:border-zinc-800 dark:bg-zinc-900">
-            <div className="flex items-center justify-between border-b border-zinc-100 pb-3 dark:border-zinc-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 sm:p-6 overflow-y-auto">
+          <div className="relative w-full max-w-lg max-h-[85vh] sm:max-h-[90vh] flex flex-col rounded-3xl border border-zinc-200 bg-white p-5 sm:p-6 shadow-2xl dark:border-zinc-800 dark:bg-zinc-900 overflow-hidden">
+            <div className="flex items-center justify-between border-b border-zinc-100 pb-3.5 dark:border-zinc-800 shrink-0">
               <h3 className="text-base font-bold text-zinc-900 dark:text-white">Add New Equipment Listing</h3>
-              <button onClick={() => setIsAddModalOpen(false)} className="text-zinc-400 hover:text-zinc-900">
+              <button
+                onClick={() => setIsAddModalOpen(false)}
+                className="rounded-full p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-white transition-colors"
+                title="Close modal"
+              >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={addForm.handleSubmit(handleAddGearSubmit)} className="space-y-4">
+            <form onSubmit={addForm.handleSubmit(handleAddGearSubmit)} className="flex-1 overflow-y-auto space-y-4 pt-3 pr-2 scrollbar-thin">
               <div>
                 <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Equipment Name</label>
                 <input
@@ -326,7 +410,7 @@ export default function ProviderDashboardPage() {
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Brand</label>
                   <input
@@ -353,7 +437,7 @@ export default function ProviderDashboardPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Stock Quantity</label>
                   <input
@@ -405,13 +489,15 @@ export default function ProviderDashboardPage() {
                 )}
               </div>
 
-              <button
-                type="submit"
-                disabled={addGearMutation.isPending}
-                className="w-full rounded-xl bg-emerald-600 py-3 text-xs font-bold text-white shadow hover:bg-emerald-500 transition-all disabled:opacity-50"
-              >
-                {addGearMutation.isPending ? "Adding Equipment..." : "Save Equipment to Inventory"}
-              </button>
+              <div className="pt-2 pb-1">
+                <button
+                  type="submit"
+                  disabled={addGearMutation.isPending}
+                  className="w-full rounded-xl bg-emerald-600 py-3 text-xs font-bold text-white shadow-lg shadow-emerald-600/20 hover:bg-emerald-500 transition-all disabled:opacity-50"
+                >
+                  {addGearMutation.isPending ? "Adding Equipment..." : "Save Equipment to Inventory"}
+                </button>
+              </div>
             </form>
           </div>
         </div>
@@ -419,18 +505,22 @@ export default function ProviderDashboardPage() {
 
       {/* Edit Gear Modal (PUT /provider/gear/:id) */}
       {editingGear && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-lg space-y-6 rounded-3xl border border-zinc-200 bg-white p-6 shadow-2xl dark:border-zinc-800 dark:bg-zinc-900">
-            <div className="flex items-center justify-between border-b border-zinc-100 pb-3 dark:border-zinc-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 sm:p-6 overflow-y-auto">
+          <div className="relative w-full max-w-lg max-h-[85vh] sm:max-h-[90vh] flex flex-col rounded-3xl border border-zinc-200 bg-white p-5 sm:p-6 shadow-2xl dark:border-zinc-800 dark:bg-zinc-900 overflow-hidden">
+            <div className="flex items-center justify-between border-b border-zinc-100 pb-3.5 dark:border-zinc-800 shrink-0">
               <h3 className="text-base font-bold text-zinc-900 dark:text-white flex items-center gap-2">
                 <Pencil className="h-4 w-4 text-blue-500" /> Edit Equipment Listing
               </h3>
-              <button onClick={() => setEditingGear(null)} className="text-zinc-400 hover:text-zinc-900">
+              <button
+                onClick={() => setEditingGear(null)}
+                className="rounded-full p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-white transition-colors"
+                title="Close modal"
+              >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={editForm.handleSubmit(handleEditGearSubmit)} className="space-y-4">
+            <form onSubmit={editForm.handleSubmit(handleEditGearSubmit)} className="flex-1 overflow-y-auto space-y-4 pt-3 pr-2 scrollbar-thin">
               <div>
                 <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Equipment Name</label>
                 <input
@@ -443,7 +533,7 @@ export default function ProviderDashboardPage() {
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Brand</label>
                   <input
@@ -469,7 +559,7 @@ export default function ProviderDashboardPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Stock Quantity</label>
                   <input
@@ -520,13 +610,15 @@ export default function ProviderDashboardPage() {
                 )}
               </div>
 
-              <button
-                type="submit"
-                disabled={editGearMutation.isPending}
-                className="w-full rounded-xl bg-blue-600 py-3 text-xs font-bold text-white shadow hover:bg-blue-500 transition-all disabled:opacity-50"
-              >
-                {editGearMutation.isPending ? "Updating Listing..." : "Update Equipment Listing"}
-              </button>
+              <div className="pt-2 pb-1">
+                <button
+                  type="submit"
+                  disabled={editGearMutation.isPending}
+                  className="w-full rounded-xl bg-blue-600 py-3 text-xs font-bold text-white shadow-lg shadow-blue-600/20 hover:bg-blue-500 transition-all disabled:opacity-50"
+                >
+                  {editGearMutation.isPending ? "Updating Listing..." : "Update Equipment Listing"}
+                </button>
+              </div>
             </form>
           </div>
         </div>

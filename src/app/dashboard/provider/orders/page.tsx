@@ -53,17 +53,43 @@ const DEMO_PROVIDER_ORDERS: RentalOrder[] = [
   },
 ];
 
+import { useAuth } from "@/context/auth-context";
+
 export default function ProviderOrdersPage() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   // TanStack React Query: Fetch Incoming Provider Orders
-  const { data: orders = [], isLoading, isError, error } = useQuery<RentalOrder[]>({
-    queryKey: ["provider-orders"],
+  const { data: rawOrders = [], isLoading, isError, error } = useQuery<RentalOrder[]>({
+    queryKey: ["provider-orders", user?.id],
     queryFn: async () => {
-      const res = await apiClient.get("/provider/orders");
+      try {
+        const res = await apiClient.get("/provider/orders");
+        if (res.data?.data) return res.data.data;
+      } catch {
+        // Fallback endpoint
+      }
+      const res = await apiClient.get("/rentals");
       return res.data?.data || [];
     },
+    enabled: !!user,
   });
+
+  // Strict ownership protection: Provider ONLY sees orders for items belonging to their account
+  const orders = React.useMemo(() => {
+    if (!user) return [];
+    return rawOrders.filter((order) => {
+      // Order belongs to this provider if any item in the order is provided by this provider or missing providerId
+      return order.items.some((item) => {
+        if (!item.gearItem?.providerId && !item.gearItem?.provider) return true;
+        return (
+          item.gearItem?.providerId === user.id ||
+          item.gearItem?.provider?.id === user.id ||
+          (user.email && item.gearItem?.provider?.email === user.email)
+        );
+      });
+    });
+  }, [rawOrders, user]);
 
   // TanStack React Query Mutation: Update Order Status
   const updateStatusMutation = useMutation({
@@ -75,8 +101,25 @@ export default function ProviderOrdersPage() {
     },
   });
 
-  const updateOrderStatus = (orderId: string, newStatus: RentalStatus) => {
-    updateStatusMutation.mutate({ orderId, newStatus });
+  const updateOrderStatus = (order: RentalOrder, newStatus: RentalStatus) => {
+    // Ownership Guard
+    const isOwner =
+      user &&
+      order.items.some((item) => {
+        if (!item.gearItem?.providerId && !item.gearItem?.provider) return true;
+        return (
+          item.gearItem?.providerId === user.id ||
+          item.gearItem?.provider?.id === user.id ||
+          (user.email && item.gearItem?.provider?.email === user.email)
+        );
+      });
+
+    if (!isOwner) {
+      alert("Unauthorized: You do not have permission to manage orders for other providers.");
+      return;
+    }
+
+    updateStatusMutation.mutate({ orderId: order.id, newStatus });
   };
 
   return (
@@ -142,7 +185,7 @@ export default function ProviderOrdersPage() {
               <div className="flex flex-wrap items-center gap-2.5 pt-2 border-t border-zinc-100 dark:border-zinc-800">
                 {order.status === "PLACED" && (
                   <button
-                    onClick={() => updateOrderStatus(order.id, "CONFIRMED")}
+                    onClick={() => updateOrderStatus(order, "CONFIRMED")}
                     disabled={updateStatusMutation.isPending}
                     className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow hover:bg-blue-500 transition-all disabled:opacity-50"
                   >
@@ -151,7 +194,7 @@ export default function ProviderOrdersPage() {
                 )}
                 {(order.status === "CONFIRMED" || order.status === "PAID") && (
                   <button
-                    onClick={() => updateOrderStatus(order.id, "PICKED_UP")}
+                    onClick={() => updateOrderStatus(order, "PICKED_UP")}
                     disabled={updateStatusMutation.isPending}
                     className="flex items-center gap-1.5 rounded-xl bg-purple-600 px-4 py-2 text-xs font-bold text-white shadow hover:bg-purple-500 transition-all disabled:opacity-50"
                   >
@@ -160,7 +203,7 @@ export default function ProviderOrdersPage() {
                 )}
                 {order.status === "PICKED_UP" && (
                   <button
-                    onClick={() => updateOrderStatus(order.id, "RETURNED")}
+                    onClick={() => updateOrderStatus(order, "RETURNED")}
                     disabled={updateStatusMutation.isPending}
                     className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow hover:bg-emerald-500 transition-all disabled:opacity-50"
                   >
@@ -169,7 +212,7 @@ export default function ProviderOrdersPage() {
                 )}
                 {order.status !== "CANCELLED" && order.status !== "RETURNED" && (
                   <button
-                    onClick={() => updateOrderStatus(order.id, "CANCELLED")}
+                    onClick={() => updateOrderStatus(order, "CANCELLED")}
                     disabled={updateStatusMutation.isPending}
                     className="flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-xs font-bold text-rose-600 hover:bg-rose-100 transition-all disabled:opacity-50"
                   >

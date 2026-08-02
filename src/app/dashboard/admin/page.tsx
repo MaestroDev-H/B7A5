@@ -354,16 +354,20 @@ export default function AdminDashboardPage() {
 
       {/* Add Category Modal (POST /categories) */}
       {isCatModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-sm space-y-4 rounded-3xl border border-zinc-200 bg-white p-6 shadow-2xl dark:border-zinc-800 dark:bg-zinc-900">
-            <div className="flex items-center justify-between border-b border-zinc-100 pb-3 dark:border-zinc-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="relative w-full max-w-sm max-h-[85vh] sm:max-h-[90vh] flex flex-col rounded-3xl border border-zinc-200 bg-white p-5 sm:p-6 shadow-2xl dark:border-zinc-800 dark:bg-zinc-900 overflow-hidden">
+            <div className="flex items-center justify-between border-b border-zinc-100 pb-3 dark:border-zinc-800 shrink-0">
               <h3 className="text-base font-bold text-zinc-900 dark:text-white">Create Gear Category</h3>
-              <button onClick={() => setIsCatModalOpen(false)} className="text-zinc-400 hover:text-zinc-900">
+              <button
+                onClick={() => setIsCatModalOpen(false)}
+                className="rounded-full p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-white transition-colors"
+                title="Close modal"
+              >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={addCategoryForm.handleSubmit(handleAddCategorySubmit)} className="space-y-4">
+            <form onSubmit={addCategoryForm.handleSubmit(handleAddCategorySubmit)} className="flex-1 overflow-y-auto space-y-4 pt-3 pr-1">
               <div>
                 <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Category Name</label>
                 <input
@@ -379,13 +383,15 @@ export default function AdminDashboardPage() {
                 )}
               </div>
 
-              <button
-                type="submit"
-                disabled={addCategoryMutation.isPending}
-                className="w-full rounded-xl bg-emerald-600 py-3 text-xs font-bold text-white shadow hover:bg-emerald-500 transition-all disabled:opacity-50"
-              >
-                {addCategoryMutation.isPending ? "Creating Category..." : "Create Category"}
-              </button>
+              <div className="pt-2 pb-1">
+                <button
+                  type="submit"
+                  disabled={addCategoryMutation.isPending}
+                  className="w-full rounded-xl bg-emerald-600 py-3 text-xs font-bold text-white shadow-lg shadow-emerald-600/20 hover:bg-emerald-500 transition-all disabled:opacity-50"
+                >
+                  {addCategoryMutation.isPending ? "Creating Category..." : "Create Category"}
+                </button>
+              </div>
             </form>
           </div>
         </div>
@@ -393,18 +399,22 @@ export default function AdminDashboardPage() {
 
       {/* Edit Category Modal (PUT /categories/:id) */}
       {editingCategory && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-sm space-y-4 rounded-3xl border border-zinc-200 bg-white p-6 shadow-2xl dark:border-zinc-800 dark:bg-zinc-900">
-            <div className="flex items-center justify-between border-b border-zinc-100 pb-3 dark:border-zinc-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="relative w-full max-w-sm max-h-[85vh] sm:max-h-[90vh] flex flex-col rounded-3xl border border-zinc-200 bg-white p-5 sm:p-6 shadow-2xl dark:border-zinc-800 dark:bg-zinc-900 overflow-hidden">
+            <div className="flex items-center justify-between border-b border-zinc-100 pb-3 dark:border-zinc-800 shrink-0">
               <h3 className="text-base font-bold text-zinc-900 dark:text-white flex items-center gap-2">
                 <Pencil className="h-4 w-4 text-blue-500" /> Edit Gear Category
               </h3>
-              <button onClick={() => setEditingCategory(null)} className="text-zinc-400 hover:text-zinc-900">
+              <button
+                onClick={() => setEditingCategory(null)}
+                className="rounded-full p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-white transition-colors"
+                title="Close modal"
+              >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={editCategoryForm.handleSubmit(handleEditCategorySubmit)} className="space-y-4">
+            <form onSubmit={editCategoryForm.handleSubmit(handleEditCategorySubmit)} className="flex-1 overflow-y-auto space-y-4 pt-3 pr-1">
               <div>
                 <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Category Name</label>
                 <input
@@ -419,13 +429,15 @@ export default function AdminDashboardPage() {
                 )}
               </div>
 
-              <button
-                type="submit"
-                disabled={editCategoryMutation.isPending}
-                className="w-full rounded-xl bg-blue-600 py-3 text-xs font-bold text-white shadow hover:bg-blue-500 transition-all disabled:opacity-50"
-              >
-                {editCategoryMutation.isPending ? "Updating Category..." : "Update Category"}
-              </button>
+              <div className="pt-2 pb-1">
+                <button
+                  type="submit"
+                  disabled={editCategoryMutation.isPending}
+                  className="w-full rounded-xl bg-blue-600 py-3 text-xs font-bold text-white shadow-lg shadow-blue-600/20 hover:bg-blue-500 transition-all disabled:opacity-50"
+                >
+                  {editCategoryMutation.isPending ? "Updating Category..." : "Update Category"}
+                </button>
+              </div>
             </form>
           </div>
         </div>

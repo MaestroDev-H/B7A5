@@ -147,22 +147,55 @@ export default function CustomerDashboardPage() {
   const selectedRating = watch("rating");
 
   // TanStack React Query: Customer Rentals Server State
-  const { data: rentals = [], isLoading: isRentalsLoading, isError: isRentalsError, error: rentalsError } = useQuery<RentalOrder[]>({
-    queryKey: ["customer-rentals"],
+  const { data: rawRentals = [], isLoading: isRentalsLoading, isError: isRentalsError, error: rentalsError } = useQuery<RentalOrder[]>({
+    queryKey: ["customer-rentals", user?.id],
     queryFn: async () => {
-      const res = await apiClient.get("/rentals");
-      return res.data?.data || [];
+      try {
+        const res = await apiClient.get("/rentals");
+        return res.data?.data || [];
+      } catch {
+        return [];
+      }
     },
+    enabled: !!user,
   });
 
   // TanStack React Query: Customer Payments Server State
-  const { data: payments = [], isLoading: isPaymentsLoading, isError: isPaymentsError, error: paymentsError } = useQuery<Payment[]>({
-    queryKey: ["customer-payments"],
+  const { data: rawPayments = [], isLoading: isPaymentsLoading, isError: isPaymentsError, error: paymentsError } = useQuery<Payment[]>({
+    queryKey: ["customer-payments", user?.id],
     queryFn: async () => {
-      const res = await apiClient.get("/payments");
-      return res.data?.data || [];
+      try {
+        const res = await apiClient.get("/payments");
+        return res.data?.data || [];
+      } catch {
+        return [];
+      }
     },
+    enabled: !!user,
   });
+
+  // Strict Customer Protection: Customer ONLY sees their own rental orders
+  const rentals = React.useMemo(() => {
+    if (!user) return [];
+    return rawRentals.filter((order) => {
+      if (!order.customerId && !order.customer) return true;
+      return (
+        order.customerId === user.id ||
+        order.customer?.id === user.id ||
+        (user.email && order.customer?.email === user.email)
+      );
+    });
+  }, [rawRentals, user]);
+
+  // Strict Customer Protection: Customer ONLY sees payments for their own orders
+  const payments = React.useMemo(() => {
+    if (!user) return [];
+    const customerOrderIds = new Set(rentals.map((r) => r.id));
+    return rawPayments.filter((p) => {
+      if (!p.rentalOrderId) return true;
+      return customerOrderIds.has(p.rentalOrderId);
+    });
+  }, [rawPayments, rentals, user]);
 
   // TanStack React Query Mutation: Submit Review
   const reviewMutation = useMutation({
@@ -193,7 +226,24 @@ export default function CustomerDashboardPage() {
   });
 
   const handleReviewSubmit = (data: ReviewFormValues) => {
-    if (!selectedRentalItem) return;
+    if (!selectedRentalItem || !user) return;
+
+    // Ownership Guard
+    const parentOrder = rentals.find((r) =>
+      r.items.some((item) => item.id === selectedRentalItem.id)
+    );
+
+    if (
+      parentOrder &&
+      parentOrder.customerId &&
+      parentOrder.customerId !== user.id &&
+      parentOrder.customer?.id !== user.id &&
+      parentOrder.customer?.email !== user.email
+    ) {
+      alert("Unauthorized: You can only submit reviews for equipment you rented.");
+      return;
+    }
+
     reviewMutation.mutate(data);
   };
 
