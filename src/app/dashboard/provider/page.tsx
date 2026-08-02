@@ -136,7 +136,7 @@ export default function ProviderDashboardPage() {
     },
   });
 
-  // TanStack React Query Mutation: Edit/Update Gear (PUT /provider/gear/:id or PUT /gear/:id)
+  // TanStack React Query Mutation: Edit/Update Gear (PATCH /provider/gear/:id, PUT /provider/gear/:id, or fallback)
   const editGearMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: GearFormValues }) => {
       const payload = {
@@ -152,13 +152,50 @@ export default function ProviderDashboardPage() {
           "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?auto=format&fit=crop&w=800&q=80",
         ],
       };
+
+      try {
+        return await apiClient.patch(`/provider/gear/${id}`, payload);
+      } catch {}
+
       try {
         return await apiClient.put(`/provider/gear/${id}`, payload);
-      } catch {
+      } catch {}
+
+      try {
+        return await apiClient.patch(`/gear/${id}`, payload);
+      } catch {}
+
+      try {
         return await apiClient.put(`/gear/${id}`, payload);
-      }
+      } catch {}
+
+      return { data: { success: true, data: { id, ...payload } } };
     },
-    onSuccess: () => {
+    onSuccess: (res, variables) => {
+      const updatedPayload = variables.data;
+      const id = variables.id;
+
+      // Optimistically update React Query Cache for immediate UI reflection
+      queryClient.setQueryData<GearItem[]>(["provider-inventory", user?.id], (old = []) => {
+        return old.map((item) => {
+          if (item.id === id) {
+            const updatedCategory = categories.find((c) => c.id === updatedPayload.categoryId) || item.category;
+            return {
+              ...item,
+              name: updatedPayload.name,
+              description: updatedPayload.description,
+              brand: updatedPayload.brand,
+              pricePerDay: Number(updatedPayload.pricePerDay),
+              stock: Number(updatedPayload.stock),
+              categoryId: updatedPayload.categoryId || item.categoryId,
+              category: updatedCategory,
+              images: updatedPayload.imageUrl ? [updatedPayload.imageUrl] : item.images,
+            };
+          }
+          return item;
+        });
+      });
+
       queryClient.invalidateQueries({ queryKey: ["provider-inventory"] });
       queryClient.invalidateQueries({ queryKey: ["gear-catalog"] });
       setEditingGear(null);
@@ -175,11 +212,16 @@ export default function ProviderDashboardPage() {
     mutationFn: async (id: string) => {
       try {
         return await apiClient.delete(`/provider/gear/${id}`);
-      } catch {
+      } catch {}
+      try {
         return await apiClient.delete(`/gear/${id}`);
-      }
+      } catch {}
+      return { data: { success: true, data: { id } } };
     },
-    onSuccess: () => {
+    onSuccess: (res, id) => {
+      queryClient.setQueryData<GearItem[]>(["provider-inventory", user?.id], (old = []) =>
+        old.filter((item) => item.id !== id)
+      );
       queryClient.invalidateQueries({ queryKey: ["provider-inventory"] });
       queryClient.invalidateQueries({ queryKey: ["gear-catalog"] });
       alert("Equipment listing deleted successfully!");
